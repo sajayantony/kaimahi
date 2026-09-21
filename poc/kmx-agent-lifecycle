@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+usage() {
+    echo "usage: kmx-agent-lifecycle <deploy|rollback-verify> --catalog <agents-checkout> <tool flags...>" >&2
+    exit 2
+}
+
+[ "$#" -ge 3 ] || usage
+operation=$1
+shift
+[ "$1" = "--catalog" ] || usage
+catalog=$2
+shift 2
+
+case "$operation" in
+    deploy|rollback-verify) ;;
+    *) usage ;;
+esac
+
+tool="$catalog/tools/$operation"
+[ -x "$tool" ] || {
+    echo "lifecycle tool is not executable: $tool" >&2
+    exit 1
+}
+
+exec "$tool" "$@"
