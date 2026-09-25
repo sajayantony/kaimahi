@@ -30,7 +30,8 @@ checks.
 | Area | Installed / checkout, including legacy | Demonstration | Scaffolding |
 |---|---|---|---|
 | `cmd/` | `kmx` | — | — |
-| `internal/` | `kmx/` (16 packages), plus embedded schema fixtures | — | — |
+| `internal/` | `kmx/` (20 packages), plus embedded schema fixtures | — | experimental KMX separation proofs |
+| `pkg/` | — | — | portable KMX alpha contracts |
 | `plane/` | model bridge and ordinary budget administration | — | test fakes inside packages |
 | `k8s/` | embedded model/plane/observability and retained kagent artifacts | — | — |
 | `scripts/` | 8 (6 embedded in the binary, 2 operator) | 1 | 43 (checkers, probes, CI fixtures, mutation specs) |
@@ -45,7 +46,7 @@ checks.
 
 ## `internal/` — packages in the CLI
 
-`internal/kmx/` is sixteen packages. Cluster-independent decisions live in
+`internal/kmx/` is twenty packages. Cluster-independent decisions live in
 packages; shell-out orchestration lives in `app`. `lift` holds cloud-independent
 rules, while the seven `lift*.go` files in `app` run cloud orchestration, preferences and reuse checks. Interactive lift panes use `chat_lift*.go`. Counts exclude
 Go test files but include non-Go data; versioned fixtures are not additional Go
@@ -55,6 +56,14 @@ packages.
 |---|---|---|---|
 | `kmx/app` | 82 | Installed | Command orchestration, runtime adapters, interactive agent console, shared chat UI, host inference and native platform operations. |
 | `kmx/runtime` | 1 | Installed | Platform-neutral adapter/session contracts, identities, capabilities and events. |
+| `kmx/provider` | 2 | Scaffolding | Experimental internal lifecycle descriptor, factory, backend and deterministic registry SPI. |
+| `kmx/provider/conformancetest` | 1 | Scaffolding | Reusable base conformance suite for experimental lifecycle implementations. |
+| `kmx/target` | 1 | Scaffolding | Experimental target mechanics port using neutral facts, plans and observations. |
+| `kmx/target/memory` | 1 | Scaffolding | In-memory target proof and operation journal. |
+| `kmx/orchestration` | 2 | Scaffolding | Generic experimental workload service depending only on portable contracts and internal ports. |
+| `kmx/implementations` | 1 | Scaffolding | Package root for experimental implementation conformance. |
+| `kmx/implementations/batch` | 1 | Scaffolding | Finite workload proof with output and artifacts. |
+| `kmx/implementations/interactive` | 1 | Scaffolding | Long-lived workload proof with logs and cancellation. |
 | `kmx/admin` | 6 | Installed | Model-plane admin client, ordinary caps, credentials and model ledger views. |
 | `kmx/scaffold` | 8 | Installed | Orka authoring, model/migration artifacts, retained kagent checks and shared YAML/name helpers. |
 | `kmx/orkaschema` | 3 | Installed | Structural schema validator, attribution and upstream licence. |
@@ -83,6 +92,18 @@ not evidence that the removed service or commands still exist.
 `spikes/kagent-shim/` is **Scaffolding**: an isolated converter/adapter experiment,
 fixtures and a manual cluster proof. It is a separate module, not embedded in
 kmx, and ships no supported authoring interface.
+
+`spikes/kmx-separation-of-concerns/` documents the experimental portable
+contracts in `pkg/kmx` and the internal implementation, orchestration, and target
+proofs. The root module compiles and tests them, but the installed CLI does not
+import them and they make no production API commitment.
+
+## `pkg/` — experimental public contracts
+
+`pkg/kmx/` contains six non-test Go files defining the portable alpha workload,
+lifecycle, stream, error, digest, evidence, and receipt contracts used only by
+the separation-of-concerns spike. Architecture tests enforce its dependency and
+serialized-surface boundaries. The package is not wired into the installed CLI.
 
 ## `plane/` — the model bridge
 
