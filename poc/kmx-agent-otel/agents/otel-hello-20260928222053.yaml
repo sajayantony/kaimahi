@@ -1,0 +1,53 @@
+# Orka bundle, scaffolded by kmx. Schema source:
+# installed Orka CRDs, served core.orka.ai/v1alpha1
+# Local schema validation does not evaluate CEL or server admission.
+# Use the explicit namespace that the Orka controller watches.
+# Do not bulk-apply this bundle. The Secret skeleton is a named prerequisite,
+# not a credential: provision its referenced key separately; never write this skeleton.
+# Create Provider only, wait for current-generation Ready; then create Agent
+# and wait for current-generation Ready; only then create the optional Task.
+# Schema support for rate limits is not proof of runtime enforcement.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+    name: local-provider-key
+    namespace: orka-system
+---
+apiVersion: core.orka.ai/v1alpha1
+kind: Provider
+metadata:
+    name: otel-hello-20260928222053
+    namespace: orka-system
+spec:
+    baseURL: http://ollama.ollama.svc.cluster.local:11434/v1
+    defaultModel: qwen2.5:3b
+    secretRef:
+        key: api-key
+        name: local-provider-key
+    type: openai
+---
+apiVersion: core.orka.ai/v1alpha1
+kind: Agent
+metadata:
+    name: otel-hello-20260928222053
+    namespace: orka-system
+spec:
+    providerRef:
+        name: otel-hello-20260928222053
+        namespace: orka-system
+    systemPrompt:
+        inline: You are otel-hello-20260928222053, a declarative Orka agent running on Kubernetes. Answer briefly and in plain text, and say plainly when you do not know something.
+---
+apiVersion: core.orka.ai/v1alpha1
+kind: Task
+metadata:
+    name: otel-hello-20260928222053-6dccb50e1657b61d919fa528005a1f76
+    namespace: orka-system
+spec:
+    agentRef:
+        name: otel-hello-20260928222053
+        namespace: orka-system
+    prompt: 'Reply with exactly: hello from an OpenTelemetry traced agent'
+    resources: {}
+    type: ai

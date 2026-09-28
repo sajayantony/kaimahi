@@ -57,7 +57,7 @@ import (
 // concern, not this static declaration.
 func (a orkaRuntimeAdapter) Capabilities() agentruntime.Capabilities {
 	configured := a.create != nil
-	return agentruntime.Capabilities{Render: configured, Deploy: configured, Status: true}
+	return agentruntime.Capabilities{Render: configured, Deploy: configured, Status: true, Logs: true}
 }
 
 // lifecycleVerbError returns the one shared typed error for a verb this

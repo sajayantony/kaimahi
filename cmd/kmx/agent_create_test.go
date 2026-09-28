@@ -77,7 +77,7 @@ func TestAgentCreateHelpExplainsOrkaBoundary(t *testing.T) {
 	if err := execute([]string{"agent", "create", "--help"}, deps); err != nil {
 		t.Fatal(err)
 	}
-	for _, text := range []string{"Orka", "Provider", "watches", "ServiceAccount", "v0.1.3", "full", "--schema-target", "--skills"} {
+	for _, text := range []string{"Orka", "Provider", "watches", "ServiceAccount", "v0.1.3", "full", "--schema-target", "--skills", "--tail"} {
 		if !strings.Contains(out.String(), text) {
 			t.Errorf("help lacks %q", text)
 		}

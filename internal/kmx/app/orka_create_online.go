@@ -339,6 +339,16 @@ func (a *App) createOrkaStaged(ctx context.Context, opt CreateOptions, bundle *s
 	}
 	created = append(created, "Task/"+id.Name+" UID "+id.UID)
 	a.notef("Created Task/%s (UID %s); waiting for execution and a retrievable answer.", id.Name, id.UID)
+	if opt.Tail {
+		observer := orkaRuntimeAdapter{app: a}
+		ref := agentruntime.ExecutionRef{
+			Runtime: observer.ID(), Context: a.Cfg.KubeContext,
+			Namespace: opt.Namespace, Name: id.Name, UID: id.UID,
+		}
+		if err := a.tailExecutionLogs(ctx, observer, ref); err != nil {
+			return orkaIdentity{}, err
+		}
+	}
 	answer, err := a.waitOrkaTaskResult(ctx, opt.Namespace, id, session)
 	if err != nil {
 		return orkaIdentity{}, err

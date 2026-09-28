@@ -71,11 +71,11 @@ func TestOrkaAdapterDeclaresOnlyImplementedVerbs(t *testing.T) {
 	if unconfigured.Render || unconfigured.Deploy {
 		t.Fatalf("an adapter with no create advertised render/deploy: %+v", unconfigured)
 	}
-	if !unconfigured.Status {
-		t.Fatal("status reads only its AgentRef and must always be available")
+	if !unconfigured.Status || !unconfigured.Logs {
+		t.Fatal("status and execution logs must be available without create configuration")
 	}
 	configured := lifecycleAdapter(t, goldenNoTaskCreate("")).Capabilities()
-	if !configured.Render || !configured.Deploy || !configured.Status {
+	if !configured.Render || !configured.Deploy || !configured.Status || !configured.Logs {
 		t.Fatalf("a configured adapter declined an implemented verb: %+v", configured)
 	}
 	if unconfigured.Evaluate || configured.Evaluate {

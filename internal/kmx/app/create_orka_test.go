@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/kaimahi-agents/kaimahi/internal/kmx/config"
 	"github.com/kaimahi-agents/kaimahi/internal/kmx/run"
+	agentruntime "github.com/kaimahi-agents/kaimahi/internal/kmx/runtime"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -92,6 +94,18 @@ func TestOrkaKubectlHelper(t *testing.T) {
 		time.Sleep(time.Hour)
 		os.Exit(0)
 	}
+	if slices.Contains(args, "logs") {
+		if scenario != "tail" ||
+			!slices.Contains(args, "-f") ||
+			!slices.Contains(args, "--all-containers=true") ||
+			!slices.Contains(args, "--prefix=true") ||
+			!slices.Contains(args, "--tail=20") {
+			fail()
+		}
+		fmt.Println("[pod/worker/worker] Worker ai started")
+		fmt.Println("[pod/worker/worker] Task completed successfully")
+		os.Exit(0)
+	}
 	if i := slices.Index(args, "get"); i >= 0 {
 		if scenario == "oversized-get" {
 			fmt.Print(strings.Repeat("x", 5<<20))
@@ -100,7 +114,12 @@ func TestOrkaKubectlHelper(t *testing.T) {
 		if scenario == "hang-get" {
 			time.Sleep(time.Hour)
 		}
-		kind, name := args[i+1], args[i+2]
+		kind := args[i+1]
+		if scenario == "tail" && kind == "pods" {
+			fmt.Print("pod/worker")
+			os.Exit(0)
+		}
+		name := args[i+2]
 		if scenario == "denied-provider-read" && kind == "providers.core.orka.ai" {
 			fail()
 		}
@@ -428,6 +447,55 @@ func TestOrkaOnlineCreatesSeparateStrictObjectsAndWaitsInOrder(t *testing.T) {
 	}
 	if out.Len() != 0 || !strings.Contains(diagnostics.String(), "no model response was tested") {
 		t.Fatalf("misleading output %s %s", out, diagnostics)
+	}
+}
+
+func TestExecutionTailStreamsTheSelectedRuntimeLogs(t *testing.T) {
+	a, opt, _, diagnostics, dir := orkaCreateFixture(t, "tail")
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	observer := orkaRuntimeAdapter{app: a}
+	ref := agentruntime.ExecutionRef{
+		Runtime: observer.ID(), Context: a.Cfg.KubeContext,
+		Namespace: opt.Namespace, Name: "task-1", UID: "task-uid",
+	}
+	if err := a.tailExecutionLogs(ctx, observer, ref); err != nil {
+		t.Fatal(err)
+	}
+	text := diagnostics.String()
+	for _, want := range []string{"TAIL  execution task-1 logs", "Worker ai started", "Task completed successfully"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("tail output lacks %q:\n%s", want, text)
+		}
+	}
+	var sawLogs bool
+	for _, call := range orkaCalls(t, dir) {
+		if slices.Contains(call.Args, "logs") {
+			sawLogs = true
+			if !slices.Contains(call.Args, "orka.ai/task=task-1") {
+				t.Fatalf("logs did not select the exact Task: %v", call.Args)
+			}
+		}
+	}
+	if !sawLogs {
+		t.Fatal("tail never invoked kubectl logs")
+	}
+}
+
+func TestOrkaTailRequiresAppliedTask(t *testing.T) {
+	for _, mutate := range []func(*CreateOptions){
+		func(opt *CreateOptions) { opt.Tail = true },
+		func(opt *CreateOptions) { opt.Tail, opt.Task, opt.DryRun = true, "hello", true },
+	} {
+		a, opt, out, _, dir := orkaCreateFixture(t, "")
+		mutate(&opt)
+		err := a.CreateAgent(opt)
+		if err == nil || !strings.Contains(err.Error(), "--tail") {
+			t.Fatalf("tail validation error = %v", err)
+		}
+		if out.Len() != 0 || len(orkaCalls(t, dir)) != 0 {
+			t.Fatal("invalid tail mode reached output or kubectl")
+		}
 	}
 }
 

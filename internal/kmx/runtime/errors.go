@@ -10,6 +10,7 @@ const (
 	VerbDeploy   = "deploy"
 	VerbStatus   = "status"
 	VerbEvaluate = "evaluate"
+	VerbLogs     = "logs"
 )
 
 // UnsupportedVerbError is the single typed error every runtime returns for a

@@ -286,7 +286,11 @@ MCP wiring. Use `kmx agent create --help` for all flags and defaults.
   account or RBAC. (`kmx up --step orka` provisions `orka-result-reader`, whose
   grant is one verb on `tasks.core.orka.ai` in `orka-system`.) It creates the
   Task once and waits for Succeeded plus an actual nonblank
-  answer. **Without `--task`, no model response was tested.**
+  answer. `--tail` follows that exact execution's runtime-provided log stream
+  on stderr until execution ends; it requires an applied `--task`, and the
+  answer remains the only stdout payload. Runtime adapters own how an
+  execution maps to native Tasks, runs, sessions, Jobs, or Pods. **Without
+  `--task`, no model response was tested.**
 - kmx requests a ten-minute token; **the API server determines its actual TTL**.
   It carries the account's full effective authority, not result-only scope;
   discarding it is not revocation. Release `v0.1.3` does not enforce Task-read RBAC;

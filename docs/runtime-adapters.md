@@ -55,6 +55,14 @@ Events are observations, not completion receipts. Only a successful `Send` retur
 means the runtime's terminal-state checks completed successfully. Terminal input
 and presentation stay outside the Session contract.
 
+Execution observation is a separate optional capability. KMX passes an opaque
+execution reference to the selected runtime adapter and consumes neutral log
+entries; the adapter alone maps that reference to native Tasks, runs, sessions,
+Jobs, Pods, labels, or APIs. The CLI owns whether entries are printed or
+redirected. This lets Orka and a future kagent adapter provide the same
+`--tail` experience without putting either runtime's object model into the
+command layer.
+
 The current registry contains Orka alone. It preserves explicit namespace rules
 and Orka-first automatic discovery; the ordered walk remains a walk so a second
 platform can be registered without the caller learning about it. A third runtime

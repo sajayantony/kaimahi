@@ -23,6 +23,7 @@ type AgentRef struct {
 type Capabilities struct {
 	Streaming, Resume, Approvals, EditTools, SwitchAgent, Lift, SelectInference bool
 	Render, Deploy, Status, Evaluate                                            bool
+	Logs                                                                        bool
 }
 
 type Command struct {

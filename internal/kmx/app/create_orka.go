@@ -26,6 +26,12 @@ func (a *App) CreateAgent(opt CreateOptions) error {
 	if opt.NoApply && opt.DryRun {
 		return fmt.Errorf("--no-apply (including --out -) and --dry-run cannot be used together")
 	}
+	if opt.Tail && strings.TrimSpace(opt.Task) == "" {
+		return fmt.Errorf("--tail requires --task")
+	}
+	if opt.Tail && (opt.NoApply || opt.DryRun) {
+		return fmt.Errorf("--tail requires an applied --task execution")
+	}
 	if opt.SchemaTarget != "" && !opt.NoApply {
 		return fmt.Errorf("--schema-target is offline only; online creation uses installed CRDs")
 	}
