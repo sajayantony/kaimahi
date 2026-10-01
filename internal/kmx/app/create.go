@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"strings"
+
+	agentruntime "github.com/kaimahi-agents/kaimahi/internal/kmx/runtime"
 )
 
 // CreateOptions accepts references, never credential values. Raw numeric flags
@@ -15,7 +17,10 @@ type CreateOptions struct {
 	ProviderRequestsPerMinute, ProviderTokensPerMinute                                                              string
 	ResultServiceAccount, OrkaAPIService, ResultPort, SchemaTarget                                                  string
 	Out, BundlePath, Runtime, KagentRuntime                                                                         string
+	Sandbox, SandboxLanguage                                                                                        string
+	SandboxShell, SandboxNativePackages, SandboxContainerImage, SandboxDeviceAccess                                 bool
 	NoApply, DryRun, Coordination                                                                                   bool
+	sandboxPlan                                                                                                     *agentruntime.SandboxPlan
 	// Resolved before entering raw terminal mode. Keep the original flags and
 	// distinguish an empty file from an instruction source not yet read.
 	instructionFileText *string
@@ -25,6 +30,20 @@ type CreateOptions struct {
 // CreateAgent selects an explicit creation runtime. Empty remains Orka so
 // callers that construct a zero-value CreateOptions retain the original path.
 func (a *App) CreateAgent(opt CreateOptions) error {
+	plan, err := agentruntime.SelectSandbox(opt.Sandbox, agentruntime.SandboxRequirements{
+		Language:       opt.SandboxLanguage,
+		Shell:          opt.SandboxShell,
+		NativePackages: opt.SandboxNativePackages,
+		ContainerImage: opt.SandboxContainerImage,
+		DeviceAccess:   opt.SandboxDeviceAccess,
+	})
+	if err != nil {
+		return err
+	}
+	opt.sandboxPlan = plan
+	if plan != nil {
+		a.notef("Sandbox plan: %s — %s.", plan.Spec.Backend, plan.Reason)
+	}
 	switch strings.TrimSpace(opt.Runtime) {
 	case "", "orka":
 		return a.createOrkaAgent(opt)

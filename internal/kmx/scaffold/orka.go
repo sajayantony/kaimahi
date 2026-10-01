@@ -36,6 +36,8 @@ type OrkaSpec struct {
 	AgentRateLimit, ProviderRateLimit                                                                                                 *OrkaRateLimit
 	Coordination                                                                                                                      *OrkaCoordination
 	TaskPrompt                                                                                                                        string
+	SandboxBackend                                                                                                                    string
+	SandboxRequirements                                                                                                               any
 }
 
 // OrkaBundle is a review artifact, not a safely bulk-applied transaction.
@@ -198,8 +200,15 @@ func GenerateOrka(spec OrkaSpec) (*OrkaBundle, error) {
 		Agent:    orkaResource(orkaAPIVersion, "Agent", spec.Name, spec.Namespace),
 	}
 	b.Provider["spec"], b.Agent["spec"] = providerSpec, agentSpec
+	annotations := map[string]any{}
 	if spec.Description != "" {
-		b.Agent["metadata"].(map[string]any)["annotations"] = map[string]any{"kaimahi.dev/description": spec.Description}
+		annotations["kaimahi.dev/description"] = spec.Description
+	}
+	if err := addSandboxAnnotations(annotations, spec.SandboxBackend, spec.SandboxRequirements); err != nil {
+		return nil, err
+	}
+	if len(annotations) > 0 {
+		b.Agent["metadata"].(map[string]any)["annotations"] = annotations
 	}
 	if spec.TaskPrompt != "" {
 		var suffix [16]byte

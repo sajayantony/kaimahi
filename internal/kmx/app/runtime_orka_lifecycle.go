@@ -498,6 +498,10 @@ func orkaSpecFromPortable(portable *agentruntime.PortableAgent, bindings agentru
 		TaskPrompt:        opt.Task,
 		ProviderRateLimit: orkaRateLimitFromExtension(extension.Provider.RateLimit),
 	}
+	if sandbox := portable.Spec.Sandbox; sandbox != nil {
+		spec.SandboxBackend = string(sandbox.Backend)
+		spec.SandboxRequirements = sandbox.Requirements
+	}
 	if extension.Agent != nil {
 		for _, tool := range extension.Agent.Tools {
 			spec.Tools = append(spec.Tools, tool.Name)
@@ -713,11 +717,20 @@ func portableOrkaSource(opt CreateOptions) ([]byte, error) {
 		AllowedAgents:     append([]string(nil), opt.AllowedAgents...),
 		AgentRateLimit:    orkaRateLimitExtension(agentLimits),
 		ProviderRateLimit: orkaRateLimitExtension(providerLimits),
+		Sandbox:           sandboxSpecFromCreate(opt),
 	})
 	if err != nil {
 		return nil, err
 	}
 	return portable.Source(), nil
+}
+
+func sandboxSpecFromCreate(opt CreateOptions) *agentruntime.SandboxSpec {
+	if opt.sandboxPlan == nil {
+		return nil
+	}
+	spec := opt.sandboxPlan.Spec
+	return &spec
 }
 
 // orkaRateLimitExtension converts parsed limit flags into the portable shape.

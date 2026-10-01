@@ -64,6 +64,7 @@ type PortableSpec struct {
 	Instructions string        `yaml:"instructions"`
 	Description  string        `yaml:"description,omitempty"`
 	Model        PortableModel `yaml:"model"`
+	Sandbox      *SandboxSpec  `yaml:"sandbox,omitempty"`
 }
 
 type PortableModel struct {
@@ -383,6 +384,11 @@ func (p *PortableAgent) validate() error {
 	if err := scaffold.ValidateSingleLineText(p.Spec.Model.Name); err != nil {
 		return fmt.Errorf("spec.model.name %w", err)
 	}
+	if p.Spec.Sandbox != nil {
+		if err := p.Spec.Sandbox.validate(); err != nil {
+			return fmt.Errorf("spec.sandbox: %w", err)
+		}
+	}
 	extensions := 0
 	if p.Extensions.Orka != nil {
 		extensions++
@@ -529,6 +535,12 @@ func refusePortableInvalidUTF8(p *PortableAgent) error {
 		{"spec.description", p.Spec.Description},
 		{"spec.model.name", p.Spec.Model.Name},
 	}
+	if p.Spec.Sandbox != nil {
+		fields = append(fields,
+			struct{ path, value string }{"spec.sandbox.backend", string(p.Spec.Sandbox.Backend)},
+			struct{ path, value string }{"spec.sandbox.requirements.language", p.Spec.Sandbox.Requirements.Language},
+		)
+	}
 	if orka := p.Extensions.Orka; orka != nil {
 		fields = append(fields, struct{ path, value string }{"extensions.orka.apiVersion", orka.APIVersion})
 		if orka.Agent != nil {
@@ -576,6 +588,9 @@ func refusePortableInvalidUTF8(p *PortableAgent) error {
 // shorthand field reaches one of these strings.
 func refusePortableSecretShapes(p *PortableAgent) error {
 	values := []string{p.APIVersion, p.Kind, p.Metadata.Name, p.Spec.Instructions, p.Spec.Description, p.Spec.Model.Name}
+	if p.Spec.Sandbox != nil {
+		values = append(values, string(p.Spec.Sandbox.Backend), p.Spec.Sandbox.Requirements.Language)
+	}
 	if orka := p.Extensions.Orka; orka != nil {
 		values = append(values, orka.APIVersion)
 		if orka.Agent != nil {
@@ -659,6 +674,7 @@ type OrkaShorthand struct {
 	Tools, Skills, AllowedAgents                                                          []string
 	Coordination                                                                          bool
 	ProviderRateLimit, AgentRateLimit                                                     *OrkaRateLimit
+	Sandbox                                                                               *SandboxSpec
 }
 
 // cloneOrkaRateLimit returns a deep copy of limit — a new struct with its
@@ -701,6 +717,7 @@ func EncodeOrkaShorthand(s OrkaShorthand) (*PortableAgent, error) {
 			Instructions: s.Instructions,
 			Description:  s.Description,
 			Model:        PortableModel{Name: s.Model},
+			Sandbox:      cloneSandboxSpec(s.Sandbox),
 		},
 		Extensions: PortableExtensions{
 			Orka: &OrkaExtension{
@@ -761,6 +778,7 @@ type KagentShorthand struct {
 	Runtime, ProviderType, Model, BaseURL      string
 	SecretName, SecretKey                      string
 	Tools                                      []KagentMCPBinding
+	Sandbox                                    *SandboxSpec
 }
 
 // EncodeKagentShorthand deterministically encodes behavior and validates the
@@ -787,12 +805,14 @@ func EncodeKagentShorthand(s KagentShorthand) (*PortableAgent, error) {
 			Instructions: s.Instructions,
 			Description:  s.Description,
 			Model:        PortableModel{Name: s.Model},
+			Sandbox:      cloneSandboxSpec(s.Sandbox),
 		},
 		Extensions: PortableExtensions{Kagent: &KagentExtension{
 			APIVersion: kagentExtensionAPIVersion,
 			Runtime:    s.Runtime,
 		}},
 	}
+
 	for _, binding := range s.Tools {
 		copyBinding := binding
 		copyBinding.ToolNames = append([]string(nil), binding.ToolNames...)
@@ -826,4 +846,12 @@ func EncodeKagentShorthand(s KagentShorthand) (*PortableAgent, error) {
 	}
 	agent.source = source
 	return agent, nil
+}
+
+func cloneSandboxSpec(spec *SandboxSpec) *SandboxSpec {
+	if spec == nil {
+		return nil
+	}
+	clone := *spec
+	return &clone
 }

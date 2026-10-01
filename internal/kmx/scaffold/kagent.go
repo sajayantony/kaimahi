@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -42,6 +43,8 @@ type KagentSpec struct {
 	Name, Namespace, Description, Runtime, Instructions string
 	ProviderType, Model, BaseURL, SecretName, SecretKey string
 	Tools                                               []KagentMCPToolBinding
+	SandboxBackend                                      string
+	SandboxRequirements                                 any
 }
 
 // KagentBundle is ordered as a value-free Secret prerequisite, ModelConfig,
@@ -145,7 +148,10 @@ func GenerateKagent(spec KagentSpec) (*KagentBundle, error) {
 		return nil, err
 	}
 
-	bundle := buildKagentBundle(spec)
+	bundle, err := buildKagentBundle(spec)
+	if err != nil {
+		return nil, err
+	}
 	if err := bundle.Validate(); err != nil {
 		return nil, err
 	}
@@ -188,7 +194,7 @@ func validateKagentTools(tools []KagentMCPToolBinding) error {
 	return nil
 }
 
-func buildKagentBundle(spec KagentSpec) *KagentBundle {
+func buildKagentBundle(spec KagentSpec) (*KagentBundle, error) {
 	providerName := "OpenAI"
 	providerField := "openAI"
 	if spec.ProviderType == "anthropic" {
@@ -258,7 +264,14 @@ func buildKagentBundle(spec KagentSpec) *KagentBundle {
 		"type":        "Declarative",
 		"declarative": declarative,
 	}
-	return bundle
+	annotations := map[string]any{}
+	if err := addSandboxAnnotations(annotations, spec.SandboxBackend, spec.SandboxRequirements); err != nil {
+		return nil, err
+	}
+	if len(annotations) > 0 {
+		bundle.Agent["metadata"].(map[string]any)["annotations"] = annotations
+	}
+	return bundle, nil
 }
 
 func kagentResource(apiVersion, kind, name, namespace string) map[string]any {
@@ -369,6 +382,17 @@ func (b *KagentBundle) Validate() error {
 		ProviderType: providerInput, Model: model, BaseURL: baseURL,
 		SecretName: secretName, SecretKey: secretKey, Tools: tools,
 	}
+	if metadata, ok := b.Agent["metadata"].(map[string]any); ok {
+		if annotations, ok := metadata["annotations"].(map[string]any); ok {
+			spec.SandboxBackend, _ = annotations["sandbox.kaimahi.dev/backend"].(string)
+			if encoded, ok := annotations["sandbox.kaimahi.dev/requirements"].(string); ok {
+				if !json.Valid([]byte(encoded)) {
+					return fmt.Errorf("sandbox requirements annotation must be valid JSON")
+				}
+				spec.SandboxRequirements = json.RawMessage(encoded)
+			}
+		}
+	}
 	if spec.Runtime != "go" && spec.Runtime != "python" {
 		return fmt.Errorf("Agent.spec.declarative.runtime must be explicitly go or python")
 	}
@@ -384,7 +408,10 @@ func (b *KagentBundle) Validate() error {
 	if err := validateKagentTools(spec.Tools); err != nil {
 		return err
 	}
-	expected := buildKagentBundle(spec)
+	expected, err := buildKagentBundle(spec)
+	if err != nil {
+		return err
+	}
 	if !reflect.DeepEqual(b.Secret, expected.Secret) {
 		return fmt.Errorf("Secret must be a metadata-only review prerequisite with no data or stringData")
 	}
