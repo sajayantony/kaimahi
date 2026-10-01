@@ -99,6 +99,12 @@ loopback HTTP through a context-pinned port-forward. Fresh names and UID checks
 do not bind returned result bytes to a UID. Dry-run tests neither access nor execution.`}
 	cmd.Flags().StringVar(&opt.Runtime, "runtime", "orka", "agent runtime: orka or kagent")
 	cmd.Flags().StringVar(&opt.KagentRuntime, "kagent-runtime", "go", "Kagent declarative runtime: go or python")
+	cmd.Flags().StringVar(&opt.Sandbox, "sandbox", "", "execution sandbox: auto, hyperlight-js, unikraft, or pod")
+	cmd.Flags().StringVar(&opt.SandboxLanguage, "sandbox-language", "", "workload language used for sandbox selection (for example javascript or python)")
+	cmd.Flags().BoolVar(&opt.SandboxShell, "sandbox-shell", false, "workload requires a Linux shell")
+	cmd.Flags().BoolVar(&opt.SandboxNativePackages, "sandbox-native-packages", false, "workload requires native or dynamically installed packages")
+	cmd.Flags().BoolVar(&opt.SandboxContainerImage, "sandbox-container-image", false, "workload requires an OCI container image")
+	cmd.Flags().BoolVar(&opt.SandboxDeviceAccess, "sandbox-device-access", false, "workload requires a device such as a GPU")
 	cmd.Flags().StringVar(&opt.Namespace, "namespace", "", "explicit target namespace; the selected runtime controller must watch it (required)")
 	cmd.Flags().StringVar(&opt.Description, "description", "", "one-line description")
 	cmd.Flags().StringVar(&opt.ProviderType, "provider-type", "", "Provider type: openai, anthropic or azure-openai (required)")
@@ -129,6 +135,7 @@ do not bind returned result bytes to a UID. Dry-run tests neither access nor exe
 	cmd.MarkFlagsMutuallyExclusive("no-apply", "dry-run")
 	_ = cmd.RegisterFlagCompletionFunc("runtime", staticCompletion([]string{"orka", "kagent"}))
 	_ = cmd.RegisterFlagCompletionFunc("kagent-runtime", staticCompletion([]string{"go", "python"}))
+	_ = cmd.RegisterFlagCompletionFunc("sandbox", staticCompletion([]string{"auto", "hyperlight-js", "unikraft", "pod"}))
 	_ = cmd.RegisterFlagCompletionFunc("provider-type", staticCompletion([]string{"openai", "anthropic", "azure-openai"}))
 	_ = cmd.RegisterFlagCompletionFunc("schema-target", staticCompletion([]string{"v0.2.0", "v0.1.3", "main"}))
 	cmd.Args = func(cmd *cobra.Command, args []string) error {

@@ -65,14 +65,19 @@ func (a kagentRuntimeAdapter) Render(_ context.Context, source []byte, _ agentru
 			ToolNames:  append([]string(nil), binding.ToolNames...),
 		})
 	}
-	bundle, err := scaffold.GenerateKagent(scaffold.KagentSpec{
+	spec := scaffold.KagentSpec{
 		Name: portable.Metadata.Name, Namespace: a.bindings.Namespace,
 		Description: portable.Spec.Description, Instructions: portable.Spec.Instructions,
 		Runtime: portable.Extensions.Kagent.Runtime, Model: portable.Spec.Model.Name,
 		ProviderType: a.bindings.ModelConfig.Provider, BaseURL: a.bindings.ModelConfig.BaseURL,
 		SecretName: a.bindings.ModelConfig.SecretRef.Name, SecretKey: a.bindings.ModelConfig.SecretRef.Key,
 		Tools: tools,
-	})
+	}
+	if sandbox := portable.Spec.Sandbox; sandbox != nil {
+		spec.SandboxBackend = string(sandbox.Backend)
+		spec.SandboxRequirements = sandbox.Requirements
+	}
+	bundle, err := scaffold.GenerateKagent(spec)
 	if err != nil {
 		return agentruntime.RenderedBundle{}, err
 	}

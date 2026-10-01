@@ -59,6 +59,7 @@ func TestOrkaBundleShapeAndReferences(t *testing.T) {
 			t.Errorf("%s: %#v", key, agent[key])
 		}
 	}
+
 	if got := b.Agent["metadata"].(map[string]any)["annotations"].(map[string]any)["kaimahi.dev/description"]; got != spec.Description {
 		t.Errorf("description annotation: %v", got)
 	}
@@ -75,6 +76,20 @@ func TestOrkaBundleShapeAndReferences(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing guidance %q", want)
 		}
+	}
+}
+
+func TestOrkaBundleCarriesSandboxPlacementAnnotations(t *testing.T) {
+	spec := orkaSpec()
+	spec.SandboxBackend = "unikraft"
+	spec.SandboxRequirements = map[string]any{"language": "python", "shell": true}
+	b := orkaBundle(t, spec)
+	annotations := b.Agent["metadata"].(map[string]any)["annotations"].(map[string]any)
+	if annotations["sandbox.kaimahi.dev/backend"] != "unikraft" {
+		t.Fatal(annotations)
+	}
+	if annotations["sandbox.kaimahi.dev/requirements"] != `{"language":"python","shell":true}` {
+		t.Fatal(annotations)
 	}
 }
 

@@ -193,6 +193,7 @@ func portableKagentSource(opt CreateOptions, tools []agentruntime.KagentMCPBindi
 		Instructions: instructions, Runtime: opt.KagentRuntime,
 		ProviderType: opt.ProviderType, Model: opt.Model, BaseURL: opt.BaseURL,
 		SecretName: opt.Secret, SecretKey: opt.SecretKey, Tools: tools,
+		Sandbox: sandboxSpecFromCreate(opt),
 	})
 	if err != nil {
 		return nil, agentruntime.KagentBindings{}, err

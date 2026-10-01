@@ -58,6 +58,43 @@ func TestAgentCreateBundlePathEnablesBundleWithStdout(t *testing.T) {
 	}
 }
 
+func TestAgentCreateAutoSelectsAndRecordsSandbox(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agents", "sample")
+	var out, diagnostics bytes.Buffer
+	deps, _ := testDependencies(&out, &diagnostics)
+	args := append(orkaCreateArgs(), "--bundle-path", path, "--sandbox", "auto", "--sandbox-language", "javascript")
+	if err := execute(args, deps); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "sandbox.kaimahi.dev/backend: hyperlight-js") {
+		t.Fatalf("rendered Agent lacks sandbox selection:\n%s", out.String())
+	}
+	source, err := os.ReadFile(filepath.Join(path, "agent.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"sandbox:", "backend: hyperlight-js", "language: javascript"} {
+		if !strings.Contains(string(source), want) {
+			t.Fatalf("portable revision lacks %q:\n%s", want, source)
+		}
+	}
+	if !strings.Contains(diagnostics.String(), "Sandbox plan: hyperlight-js") {
+		t.Fatalf("selection was not explained:\n%s", diagnostics.String())
+	}
+}
+
+func TestAgentCreateRefusesIncompatibleSandbox(t *testing.T) {
+	var out, diagnostics bytes.Buffer
+	deps, _ := testDependencies(&out, &diagnostics)
+	args := append(orkaCreateArgs(), "--sandbox", "hyperlight-js", "--sandbox-language", "python")
+	if err := execute(args, deps); err == nil || !strings.Contains(err.Error(), "JavaScript-only") {
+		t.Fatalf("incompatible sandbox was not refused: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("emitted an artifact for an invalid sandbox:\n%s", out.String())
+	}
+}
+
 func TestAgentCreateRejectsLegacyFlagsAndSyntax(t *testing.T) {
 	for _, extra := range [][]string{{"--image", "example/image"}, {"--isolation", "none"}, {"--run-as-user", "1000"}, {"--tools", "server:tool"}, {"--agent-requests-per-minute", "0"}, {"--provider-tokens-per-minute", "0"}, {"--dry-run"}} {
 		var out, diagnostics bytes.Buffer

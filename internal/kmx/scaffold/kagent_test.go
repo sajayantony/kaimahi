@@ -31,6 +31,26 @@ func kagentSpec() KagentSpec {
 	}
 }
 
+func TestKagentBundleCarriesSandboxPlacementAnnotations(t *testing.T) {
+	spec := kagentSpec()
+	spec.SandboxBackend = "pod"
+	spec.SandboxRequirements = map[string]any{"containerImage": true, "language": "python"}
+	bundle, err := GenerateKagent(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	annotations := bundle.Agent["metadata"].(map[string]any)["annotations"].(map[string]any)
+	if annotations["sandbox.kaimahi.dev/backend"] != "pod" {
+		t.Fatal(annotations)
+	}
+	if annotations["sandbox.kaimahi.dev/requirements"] != `{"containerImage":true,"language":"python"}` {
+		t.Fatal(annotations)
+	}
+	if err := bundle.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func kagentBundle(t *testing.T, spec KagentSpec) *KagentBundle {
 	t.Helper()
 	bundle, err := GenerateKagent(spec)
