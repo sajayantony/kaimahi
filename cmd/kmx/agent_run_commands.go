@@ -13,8 +13,9 @@ import (
 func newAgentRunCommand(state *commandState) *cobra.Command {
 	var opt app.RunAgentOptions
 	cmd := &cobra.Command{
-		Use: "run [<bundle-dir>]", Short: "Run one Task against an existing Orka Agent",
-		Long: "Run a bundle's deployed Agent, or select a live Agent with --agent.\n" +
+		Use: "run [<bundle-dir>]", Short: "Run a portable agent on Orka or AgentSessions",
+		Long: "Run a bundle's deployed Orka Agent, select a live Orka Agent with --agent, or\n" +
+			"run a local portable bundle through an AgentSessions server with --runtime agentsessions.\n" +
 			"Task name, state and recovery instructions go to stderr; stdout contains only the answer.\n" +
 			"A Task is never retried or deleted; exit code 2 means the wait expired and\n" +
 			"the answer may not yet be readable. Use kmx task result to retrieve it later.",
@@ -27,6 +28,9 @@ func newAgentRunCommand(state *commandState) *cobra.Command {
 	cmd.Flags().StringVar(&opt.PromptFile, "prompt-file", "", "read Task prompt from file, or - for stdin")
 	cmd.Flags().DurationVar(&opt.Wait, "wait", 5*time.Minute, "time to wait for the answer (default 5m; 10s to 9m)")
 	cmd.Flags().StringVar(&opt.ResultPort, "result-port", "19180", "free loopback port for the temporary result forward")
+	cmd.Flags().StringVar(&opt.Runtime, "runtime", "orka", "execution runtime: orka or agentsessions")
+	cmd.Flags().StringVar(&opt.AgentSessionsServer, "server", "", "AgentSessions gRPC server address")
+	cmd.Flags().StringVar(&opt.AgentSessionsProject, "project", "default", "AgentSessions project")
 	cmd.Args = func(cmd *cobra.Command, args []string) error {
 		if err := usageArgs(0, 1, "kmx agent run <bundle-dir> --prompt <text> | kmx agent run --agent <name> --prompt <text>")(cmd, args); err != nil {
 			return err
@@ -42,6 +46,27 @@ func newAgentRunCommand(state *commandState) *cobra.Command {
 		}
 		if (len(args) == 1) == (strings.TrimSpace(opt.Agent) != "") {
 			return fmt.Errorf("choose either a bundle directory or --agent")
+		}
+		if opt.Runtime != "orka" && opt.Runtime != "agentsessions" {
+			return fmt.Errorf("--runtime must be orka or agentsessions")
+		}
+		if opt.Runtime == "agentsessions" {
+			if len(args) != 1 || opt.Agent != "" {
+				return fmt.Errorf("--runtime agentsessions requires one local bundle directory")
+			}
+			if strings.TrimSpace(opt.AgentSessionsServer) == "" {
+				return fmt.Errorf("--runtime agentsessions requires --server")
+			}
+			if state.contextFlag != "" || cmd.Flags().Changed("namespace") || cmd.Flags().Changed("to-context") {
+				return fmt.Errorf("--runtime agentsessions does not use Kubernetes context or namespace flags")
+			}
+			if cmd.Flags().Changed("result-port") {
+				return fmt.Errorf("--result-port is Orka-only")
+			}
+			return nil
+		}
+		if cmd.Flags().Changed("server") || cmd.Flags().Changed("project") {
+			return fmt.Errorf("--server and --project require --runtime agentsessions")
 		}
 		if len(args) == 1 && (state.contextFlag != "" || cmd.Flags().Changed("namespace")) {
 			return fmt.Errorf("bundle runs use --to-context, not --context or --namespace")

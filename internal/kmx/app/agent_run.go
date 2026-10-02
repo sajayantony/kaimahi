@@ -1,7 +1,9 @@
 package app
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/kaimahi-agents/kaimahi/internal/kmx/config"
+	agentruntime "github.com/kaimahi-agents/kaimahi/internal/kmx/runtime"
 	"github.com/kaimahi-agents/kaimahi/internal/kmx/scaffold"
 )
 
@@ -22,6 +25,7 @@ var ErrTaskPending = errors.New("Task result pending")
 
 type RunAgentOptions struct {
 	BundleDir, Agent, ToContext, Namespace, Prompt, PromptFile, ResultPort string
+	Runtime, AgentSessionsServer, AgentSessionsProject                     string
 	Wait                                                                   time.Duration
 }
 
@@ -93,6 +97,16 @@ func readRunPromptFile(path string) (string, error) {
 }
 
 func (a *App) RunAgent(opt RunAgentOptions) error {
+	runtimeID := strings.TrimSpace(opt.Runtime)
+	if runtimeID == "" {
+		runtimeID = string(agentruntime.Orka)
+	}
+	if runtimeID == string(agentruntime.AgentSessions) {
+		return a.runAgentSessions(opt)
+	}
+	if runtimeID != string(agentruntime.Orka) {
+		return fmt.Errorf("--runtime must be orka or agentsessions")
+	}
 	if a.Cfg == nil || a.Run == nil || a.Out == nil || a.Err == nil {
 		return fmt.Errorf("agent run requires configured kubectl and streams")
 	}
@@ -330,4 +344,160 @@ func (a *App) RunAgent(opt RunAgentOptions) error {
 	}
 	_, err = fmt.Fprintln(worker.Out, answer)
 	return err
+}
+
+type agentSessionsTurn struct {
+	Name        string                     `json:"name"`
+	Model       string                     `json:"model"`
+	Annotations map[string]string          `json:"annotations"`
+	Messages    []agentSessionsTurnMessage `json:"messages"`
+}
+
+type agentSessionsTurnMessage struct {
+	Role string `json:"role"`
+	Text string `json:"text"`
+}
+
+func (a *App) runAgentSessions(opt RunAgentOptions) error {
+	if a.Run == nil || a.Out == nil || a.Err == nil {
+		return fmt.Errorf("AgentSessions run requires configured process runner and streams")
+	}
+	if opt.BundleDir == "" || opt.Agent != "" {
+		return fmt.Errorf("AgentSessions run requires exactly one local bundle directory")
+	}
+	if opt.ToContext != "" || opt.Namespace != "" {
+		return fmt.Errorf("AgentSessions run does not use --to-context or --namespace")
+	}
+	if strings.TrimSpace(opt.AgentSessionsServer) == "" {
+		return fmt.Errorf("AgentSessions run requires --server")
+	}
+	if err := scaffold.RefuseKeyShapes(opt.AgentSessionsServer); err != nil {
+		return fmt.Errorf("refusing credential-shaped AgentSessions server address")
+	}
+	if opt.AgentSessionsProject == "" {
+		opt.AgentSessionsProject = "default"
+	}
+	if err := scaffold.RefuseKeyShapes(opt.AgentSessionsProject); err != nil {
+		return fmt.Errorf("refusing credential-shaped AgentSessions project")
+	}
+	if (opt.Prompt == "") == (opt.PromptFile == "") {
+		return fmt.Errorf("supply exactly one of --prompt or --prompt-file")
+	}
+	timeout, err := orkaResultDeadline(opt.Wait)
+	if err != nil {
+		return err
+	}
+	prompt, err := resolveRunPrompt(a, opt)
+	if err != nil {
+		return err
+	}
+	bundle, err := resolveOrkaPath(opt.BundleDir)
+	if err != nil {
+		return fmt.Errorf("resolve bundle: %w", err)
+	}
+	name, source, digest, err := readBundlePortableAgent(bundle)
+	if err != nil {
+		return err
+	}
+	portable, err := agentruntime.ParsePortableAgent(source)
+	if err != nil {
+		return fmt.Errorf("invalid portable agent: %w", err)
+	}
+	if err := validateAgentSessionsPortable(portable); err != nil {
+		return err
+	}
+	turn := agentSessionsTurn{
+		Name:  name,
+		Model: portable.Spec.Model.Name,
+		Annotations: map[string]string{
+			"kmx.kaimahi.dev/portable-digest": digest,
+			"kmx.kaimahi.dev/runtime":         string(agentruntime.AgentSessions),
+		},
+		Messages: []agentSessionsTurnMessage{
+			{Role: "system", Text: portable.Spec.Instructions},
+			{Role: "user", Text: prompt},
+		},
+	}
+	payload, err := json.Marshal(turn)
+	if err != nil {
+		return fmt.Errorf("encode AgentSessions turn: %w", err)
+	}
+	ctx, stop := signal.NotifyContext(a.operationContext(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	runner := *a.Run
+	runner.Context = ctx
+	runner.Stdout = nil
+	runner.Stderr = a.Err
+	var answer bytes.Buffer
+	err = runner.Pipe(bytes.NewReader(payload), &answer, "agentctl", "exec",
+		"--server", opt.AgentSessionsServer,
+		"--project", opt.AgentSessionsProject,
+		"--harness", "chat",
+		"--turn-file", "-",
+		"--output-only",
+	)
+	if err != nil {
+		return fmt.Errorf("run portable agent through AgentSessions: %w", err)
+	}
+	if answer.Len() == 0 {
+		return fmt.Errorf("AgentSessions returned no answer")
+	}
+	_, err = io.Copy(a.Out, &answer)
+	return err
+}
+
+func resolveRunPrompt(a *App, opt RunAgentOptions) (string, error) {
+	prompt := opt.Prompt
+	if opt.PromptFile == "" {
+		if strings.TrimSpace(prompt) == "" {
+			return "", fmt.Errorf("prompt must not be blank")
+		}
+		return prompt, nil
+	}
+	var err error
+	if opt.PromptFile == "-" {
+		if a.Stdin == nil {
+			return "", fmt.Errorf("--prompt-file - requires stdin")
+		}
+		body, readErr := io.ReadAll(io.LimitReader(a.Stdin, 1<<20+1))
+		if readErr != nil {
+			return "", fmt.Errorf("read prompt from stdin: %w", readErr)
+		}
+		if len(body) > 1<<20 {
+			return "", fmt.Errorf("prompt exceeds size limit")
+		}
+		prompt = string(body)
+	} else {
+		prompt, err = readRunPromptFile(opt.PromptFile)
+		if err != nil {
+			return "", err
+		}
+	}
+	if strings.TrimSpace(prompt) == "" {
+		return "", fmt.Errorf("prompt must not be blank")
+	}
+	return prompt, nil
+}
+
+func validateAgentSessionsPortable(agent *agentruntime.PortableAgent) error {
+	if agent.Spec.Coordination != nil {
+		return fmt.Errorf("AgentSessions POC cannot honor spec.coordination yet")
+	}
+	if agent.Extensions.Kagent != nil {
+		return fmt.Errorf("runtime %s bundle is not supported by AgentSessions", agentruntime.Kagent)
+	}
+	if extension := agent.Extensions.Orka; extension != nil {
+		if extension.Provider.RateLimit != nil {
+			return fmt.Errorf("AgentSessions cannot honor extensions.orka.provider.rateLimit")
+		}
+		if extension.Agent != nil && (len(extension.Agent.Tools) != 0 ||
+			len(extension.Agent.Skills) != 0 ||
+			extension.Agent.RateLimit != nil ||
+			extension.Agent.Coordination != nil) {
+			return fmt.Errorf("AgentSessions cannot honor Orka-only agent behavior")
+		}
+	}
+	return nil
 }

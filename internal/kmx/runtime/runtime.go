@@ -8,8 +8,9 @@ import "context"
 type ID string
 
 const (
-	Orka   ID = "orka"
-	Kagent ID = "kagent"
+	Orka          ID = "orka"
+	Kagent        ID = "kagent"
+	AgentSessions ID = "agentsessions"
 )
 
 type AgentRef struct {

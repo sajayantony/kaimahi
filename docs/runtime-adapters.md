@@ -13,6 +13,12 @@ already-installed exact Kagent v0.10.2. It does not install or upgrade that
 runtime and does not change any no-flag behavior. The selected platform, not a
 generic KMX control plane, owns execution and enforcement.
 
+The `substrate-e2e-poc` path adds a bounded execution integration:
+`kmx agent run <bundle> --runtime agentsessions --server <address>` sends a
+local portable revision to an already-running AgentSessions host. The host may
+place its chat harness in a Substrate Actor. KMX does not install Substrate,
+deploy the host, or carry provider credentials in the bundle.
+
 ## Terms and ownership
 
 | Term | Meaning | Owner |
@@ -94,6 +100,15 @@ refuses chat.
 |---|---|---|---|---|---|
 | Orka (default) | yes | reconcile on supported Orka paths | yes | yes | yes |
 | Kagent v0.10.2 (explicit create only) | yes | new ModelConfig then new Agent; no adopt/update/rollback | no | no | no |
+| AgentSessions POC (explicit run only) | no | external host required | no | no | one-shot local bundle run |
+
+AgentSessions consumes the portable core instructions, model, name, and exact
+portable digest. It accepts a core-only bundle or an Orka-authored bundle whose
+Orka extension states no Orka-only behavior. Tools, skills, rate limits,
+coordination, and Kagent extensions are refused instead of ignored. The system
+instruction and user prompt are sent as typed input messages, so AgentSessions
+records them for deterministic replay. The resulting session is annotated with
+the portable digest and runtime identity.
 
 The broader lifecycle direction is tracked in
 [#194](https://github.com/kaimahi-agents/kaimahi/issues/194):
