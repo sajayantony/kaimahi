@@ -136,7 +136,10 @@ CI_WORKFLOW = ".github/workflows/ci.yml"
 # data alone therefore fails closed.
 SCOPED_SUPPORT_FILES = {
     "production": frozenset({
+        "cmd/kmx/agent_creator_commands.go",
         "cmd/kmx/agent_commands.go",
+        "internal/kmx/agentcreator/contract.go",
+        "internal/kmx/agentcreator/plan.go",
         "internal/kmx/app/agent_bundle_evaluate.go",
         "internal/kmx/app/create.go",
         "internal/kmx/app/create_kagent.go",
@@ -176,6 +179,7 @@ SCOPED_SUPPORT_FILES = {
         "docs/releases.md",
         "docs/repository-map.md",
         "docs/runtime-adapters.md",
+        "docs/sandbox-selection.md",
     }),
     # The workflow proves the same narrow create contract. It waives only
     # SCOPED_SUPPORT_RULES; the two external installer preconditions still

@@ -34,22 +34,22 @@ checks.
 | Area | Installed / checkout, including legacy | Demonstration | Scaffolding |
 |---|---|---|---|
 | `cmd/` | `kmx` | — | — |
-| `internal/` | `kmx/` (15 packages), plus embedded schema fixtures | — | — |
+| `internal/` | `kmx/` (17 packages), plus embedded schema fixtures | — | — |
 | `plane/` | model bridge and ordinary budget administration | — | test fakes inside packages |
 | `k8s/` | embedded runtime/plane/observability artifacts | — | — |
-| `scripts/` | 7 (6 embedded in the binary, 1 operator) | 1 | 43 (checkers, release packaging, probes, CI fixtures, mutation specs) |
-| `docs/` | 46 tracked files; guides, direction, retirement records and assets | historical scenario records | maintainer and process docs |
+| `scripts/` | 7 (6 embedded in the binary, 1 operator) | 1 | 44 (checkers, release packaging, probes, CI fixtures, mutation specs, cast generator) |
+| `docs/` | 49 tracked files; guides, direction, retirement records and assets | historical scenario records | maintainer and process docs |
 | `brand/` | 7 identity assets for repository and organization surfaces | — | its own checker |
 
 ## `cmd/` — installed CLI
 
 | Path | Class | Evidence |
 |---|---|---|
-| `cmd/kmx` (31 files) | **Installed** | CLI and tests: default Orka operations including native Azure OpenAI Providers and coordination, explicit exact Kagent v0.10.2 create, Orka bundle lift/status/evaluation gates, safe retirement and one-shot Task execution, interactive agent dashboard, migration, model routing, credentials, budgets, ledger and model flow/watch. |
+| `cmd/kmx` (33 files) | **Installed** | CLI and tests: default Orka operations including native Azure OpenAI Providers and coordination, explicit exact Kagent v0.10.2 create, experimental Copilot/Claude agent-creator drivers and MCP server, Orka bundle lift/status/evaluation gates, safe retirement and one-shot Task execution, interactive agent dashboard, migration, model routing, credentials, budgets, ledger and model flow/watch. |
 
 ## `internal/` — packages in the CLI
 
-`internal/kmx/` is fifteen packages. Cluster-independent decisions live in
+`internal/kmx/` is seventeen packages. Cluster-independent decisions live in
 packages; shell-out orchestration lives in `app`. `lift` holds cloud-independent
 rules, while the seven `lift*.go` files in `app` run cloud orchestration, preferences and reuse checks. Interactive lift panes use `chat_lift*.go`. Counts exclude
 Go test files but include non-Go data; versioned fixtures are not additional Go
@@ -57,6 +57,8 @@ packages.
 
 | Package or data directory | Non-test files | Class | What it is |
 |---|---|---|---|
+| `kmx/agentcreator` | 3 | Installed | Provider-neutral AgentIntent schema, normalization/questions, immutable plan digests, digest-gated apply verification and the MCP stdio server. |
+| `kmx/agentdriver` | 1 | Installed | Bounded headless Copilot CLI and Claude Code adapters that draft untrusted AgentIntent JSON for KMX validation. |
 | `kmx/app` | 95 | Installed | Command orchestration, the Orka lifecycle adapter, exact Kagent v0.10.2 create-only lifecycle adapter and online proof, agent bundle persistence, Orka lift/status/evaluation gates, safe retirement, Task execution and result retrieval, interactive Orka console, shared chat UI, host inference and native platform operations. The three Kagent non-test files are `create_kagent.go`, `kagent_create_online.go` and `runtime_kagent_lifecycle.go`; app also contains Kagent create and Orka-only bundle-refusal tests. |
 | `kmx/app/testdata` | 2 | Scaffolding | Golden bytes pin the no-Task Orka artifact for both v0.1.3 and v0.2.0. |
 | `kmx/app/testdata/bundle-format` | 2 | Scaffolding | Exact rendered documents for historical and current portable bundle fixtures. |
@@ -64,9 +66,9 @@ packages.
 | `kmx/app/testdata/bundle-format/main/eval` | 1 | Scaffolding | Current-writer evaluation case. |
 | `kmx/app/testdata/bundle-format/v0.3.0` | 2 | Scaffolding | First bundle-writer portable agent and creation bindings. |
 | `kmx/app/testdata/bundle-format/v0.3.0/eval` | 1 | Scaffolding | First bundle-writer evaluation case. |
-| `kmx/runtime` | 9 | Installed | Platform-neutral adapter/session and lifecycle contracts, identities, capabilities, events, bundle digests, registry, portable Orka/Kagent authoring union, target bindings and evaluation cases. `kagent_bindings.go` adds closed creation-target bindings; only Orka is registered for chat/discovery. |
+| `kmx/runtime` | 10 | Installed | Platform-neutral adapter/session and lifecycle contracts, identities, capabilities, events, sandbox selection, bundle digests, registry, portable Orka/Kagent authoring union, target bindings and evaluation cases. `kagent_bindings.go` adds closed creation-target bindings; only Orka is registered for chat/discovery. |
 | `kmx/admin` | 6 | Installed | Model-plane admin client, ordinary caps, credentials and model ledger views. |
-| `kmx/scaffold` | 9 | Installed | Orka authoring, exact Kagent v0.10.2 review scaffolding in `kagent.go`, model/migration artifacts and shared YAML/name helpers. |
+| `kmx/scaffold` | 10 | Installed | Orka authoring, exact Kagent v0.10.2 review scaffolding in `kagent.go`, sandbox placement annotations, model/migration artifacts and shared YAML/name helpers. |
 | `kmx/orkaschema` | 3 | Installed | Structural schema validator, attribution and upstream licence. |
 | `kmx/orkaschema/fixtures/v0.1.3` | 3 | Installed | Historical release Agent/Provider/Task CRDs for explicit offline validation, not installation. |
 | `kmx/orkaschema/fixtures/v0.2.0` | 3 | Installed | Default offline validation CRDs; the verified chart, not these fixtures, installs Orka. |
@@ -192,9 +194,9 @@ manifests, and the nine model presets. All were objects of the legacy runtime
 applied by the retired installer; nothing left in kmx reads or applies one. Plane and
 observability manifests remain part of clone-free deployment.
 
-## `scripts/` — 51 tracked files, three different jobs
+## `scripts/` — 52 tracked files, three different jobs
 
-**Reference coverage:** 41 of the 51 are named by something outside themselves,
+**Reference coverage:** 42 of the 52 are named by something outside themselves,
 and the ten `scripts/mutations/*.json` are named by nothing at all — the
 mutation harness discovers them by glob. Map/checker/board mentions are not
 caller evidence. Textual references are not necessarily invocations.
@@ -204,7 +206,7 @@ caller evidence. Textual references are not necessarily invocations.
 | **Installed** — embedded in kmx | 6 | `aks-up.sh`, `aks-down.sh`, `plane-deploy.sh`, `netpol-probe.sh`, `kube-guard.sh`, `orka-k8s-tool.py` |
 | **Checkout** — operator scripts | 1 | `plane-pods.sh` |
 | **Demonstration** | 1 | `demo-hello-to-governed.sh` |
-| **Scaffolding** — checkers, self-tests and release packaging | 20 | the eleven `check-*` files, `comment-history-go.go`, `kube-guard-test.sh`, `install-sh-test.sh`, `release-notes.py`, `homebrew-formula.py`, `test_model_fixtures.py`, `test_demo_hello_to_governed.py`, `test_orka_k8s_tool.py`, `test_owner_model_client.py` |
+| **Scaffolding** — checkers, self-tests, release packaging and docs generation | 21 | the eleven `check-*` files, `comment-history-go.go`, `kube-guard-test.sh`, `install-sh-test.sh`, `release-notes.py`, `homebrew-formula.py`, `generate-agent-creator-cast.py`, `test_model_fixtures.py`, `test_demo_hello_to_governed.py`, `test_orka_k8s_tool.py`, `test_owner_model_client.py` |
 | **Scaffolding** — live-cluster probes | 7 | `*-probe.sh`, minus the embedded one, plus `seam-tls.sh` |
 | **Scaffolding** — CI fixtures | 5 | `scripts/ci/`: `plain-model.sh`, `plain-model-server.py`, `synthetic-model.sh`, `owner-model-client.sh`, `owner-model-client.py` |
 | **Scaffolding** — mutation specifications | 10 | `scripts/mutations/*.json` |
@@ -235,15 +237,17 @@ throwaway CA and a documentation-range address routed over kind's network,
 so a public-looking hosted upstream can be dialed without a hosted account.
 CI holds no hosted credential.
 
-## `docs/` — 46 tracked files, guides and retirement records
+## `docs/` — 49 tracked files, guides and retirement records
 
-**Guides and index (22):** `README.md`, `getting-started.md`, `kmx.md`,
+**Guides and index (24):** `README.md`, `getting-started.md`, `kmx.md`,
 `aks.md`, `models.md`, `spend.md`,
 `approvals.md`, `egress.md`, `hosted-upstreams.md`, `identity.md`,
 `operations.md`, `releases.md`, `workflows.md`, `FAQ.md`,
 `migrate.md`, `orka.md`, `copilot-inference.md`, `interactive-chat.md`,
 `interactive-lift.md`, `orka-k8s-tool.md`, `bundle-format.md` and `runtime-adapters.md`. Retired tool/workflow pages are pointers, not
-operating instructions for deleted code.
+operating instructions for deleted code. `sandbox-selection.md` documents the
+sandbox-picker POC, and `agent-creator-drivers.md` documents its Copilot,
+Claude and MCP authoring experience.
 
 **Retired scenario/integration records (5):** `inbound.md`, `slack.md`,
 `ap-demo.md`, `release-agent.md` and `foreign-runtime.md`.
@@ -258,7 +262,9 @@ operating instructions for deleted code.
 `orka-startup-performance.md`, `local-foundry-inference.md`,
 `chat-performance-profile.md` and `agent-lift.md`.
 
-**Assets (2):** `docs/assets/architecture.mmd` and `docs/assets/architecture.svg`.
+**Assets (3):** `docs/assets/architecture.mmd`,
+`docs/assets/architecture.svg` and
+`docs/assets/agent-creator-copilot-demo.cast`.
 These depict the pre-retirement platform, not the current model bridge. The
 `.svg` has no trailing newline, so `wc -l` reports it as 0; a line count is not
 a content check. The index explicitly labels the historical diagram.
@@ -270,6 +276,12 @@ recorded in `brand/README.md`; the root README embeds the compact `ketu.svg` mar
 and intentionally has no hero image.
 `scripts/check-brand-assets.py` checks their dimensions/transparency/metadata
 and the separately located historical architecture SVG.
+
+## `.claude/` — Claude Code agent-creator experience
+
+| Path | Class | Evidence |
+|---|---|---|
+| `.claude/skills/kmx-agent-creator/SKILL.md` | **Installed configuration** | Teaches Claude Code to use the provider-neutral KMX MCP planning and digest-gated apply tools without treating the model as deployment authority. |
 
 ## `.github/` and the root files
 
@@ -283,10 +295,12 @@ and the separately located historical architecture SVG.
 | `embed_test.go` | **Scaffolding** | Verifies every embedded asset is readable. |
 | `Makefile` | **Scaffolding** | Build/check targets plus plane-image, AKS-credential, network-policy and egress helpers. |
 | `.github/workflows/ci.yml`, `release.yml` | **Scaffolding** | Verification gates and tag-driven releases. CI includes a required live exact-v0.10.2 Kagent create shard; its official charts are external test preconditions that KMX does not install. |
+| `.github/agents/kmx-agent-creator.agent.md` | **Installed configuration** | Copilot CLI custom agent that exposes only the KMX agent-creator MCP server and requires explicit approval of the displayed plan digest before apply. |
 | `.goreleaser.yaml` | **Scaffolding** | GoReleaser config the `release` workflow builds and renders the Homebrew formula with; publishing reuses that checked artifact set and never pushes the formula to the tap (`skip_upload: true`). |
 | `.github/actions/classify-change/` | **Scaffolding** | Classifies docs-only changes for CI. |
 | `staticcheck.conf` | **Scaffolding** | Lint configuration for both modules. |
 | `go.mod`, `go.sum` | **Installed tooling** | Root module dependencies. |
+| `.mcp.json` | **Installed configuration** | Project-scoped Claude Code MCP registration for `bin/kmx agent creator mcp`. |
 | `.gitignore` | **Scaffolding** | Checkout exclusions. |
 | `.dockerignore` | **Scaffolding** | Defensive exclusions for root Docker contexts; current image builds do not use a root context. |
 

@@ -16,7 +16,10 @@
     ],
     "files": {
       "production": [
+        "cmd/kmx/agent_creator_commands.go",
         "cmd/kmx/agent_commands.go",
+        "internal/kmx/agentcreator/contract.go",
+        "internal/kmx/agentcreator/plan.go",
         "internal/kmx/app/agent_bundle_evaluate.go",
         "internal/kmx/app/create.go",
         "internal/kmx/app/create_kagent.go",
@@ -53,7 +56,8 @@
         "docs/orka.md",
         "docs/releases.md",
         "docs/repository-map.md",
-        "docs/runtime-adapters.md"
+        "docs/runtime-adapters.md",
+        "docs/sandbox-selection.md"
       ],
       "workflow": [
         ".github/workflows/ci.yml"

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "kmx-agent-creator": {
+      "type": "stdio",
+      "command": "./bin/kmx",
+      "args": [
+        "agent",
+        "creator",
+        "mcp"
+      ]
+    }
+  }
+}
