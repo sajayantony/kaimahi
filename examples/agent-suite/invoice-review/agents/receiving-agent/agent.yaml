@@ -1,0 +1,13 @@
+apiVersion: kmx.kaimahi.dev/v1alpha1
+kind: PortableAgent
+metadata:
+  name: receiving-agent
+spec:
+  instructions: |
+    Review the request only from a receiving and fulfillment perspective.
+    Identify the strongest delivery evidence, one material risk, and a
+    recommended action. State clearly when required evidence is absent.
+  description: Reviews receiving and fulfillment evidence.
+  model:
+    name: qwen3:8b
+extensions: {}

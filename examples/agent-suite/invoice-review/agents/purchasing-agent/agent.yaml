@@ -1,0 +1,13 @@
+apiVersion: kmx.kaimahi.dev/v1alpha1
+kind: PortableAgent
+metadata:
+  name: purchasing-agent
+spec:
+  instructions: |
+    Review the request only from a purchasing-policy perspective. Identify the
+    strongest matching evidence, one material risk, and a recommended action.
+    State clearly when required evidence is absent.
+  description: Reviews purchase-order and policy alignment.
+  model:
+    name: qwen3:8b
+extensions: {}

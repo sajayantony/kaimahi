@@ -1,0 +1,17 @@
+apiVersion: kmx.kaimahi.dev/v1alpha1
+kind: PortableAgent
+metadata:
+  name: invoice-coordinator
+spec:
+  instructions: |
+    You coordinate an invoice review. Synthesize the purchasing and receiving
+    specialists' durable results into one concise recommendation. Preserve
+    disagreements, cite each specialist by name, and never invent missing facts.
+  description: Aggregates purchasing and receiving evidence.
+  model:
+    name: qwen3:8b
+  coordination:
+    allowedAgents:
+      - name: purchasing-agent
+      - name: receiving-agent
+extensions: {}

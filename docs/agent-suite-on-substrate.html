@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Suite on Substrate with Kaimahi and AgentSessions</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.55;
+    }
+    a { color: var(--cp-link); }
+    code, pre { font-family: Consolas, "Courier New", Courier, monospace; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .hero {
+      padding: 64px 0 36px;
+      border-bottom: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--cp-accent);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 990px;
+      margin: 0;
+      font-size: clamp(2.2rem, 6vw, 4.8rem);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+    .lede {
+      max-width: 890px;
+      margin: 24px 0 0;
+      color: var(--cp-text-muted);
+      font-size: 1.14rem;
+    }
+    .status-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--cp-border);
+      border-radius: 999px;
+      background: var(--cp-surface);
+      color: var(--cp-text-muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .pill.live { color: var(--cp-success); }
+    .pill.incubation { color: var(--cp-warning); }
+    .pill.proposal { color: var(--cp-accent); }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--cp-border);
+      background: var(--cp-overlay);
+      backdrop-filter: blur(12px);
+    }
+    .nav-inner {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 0;
+    }
+    .nav a {
+      flex: 0 0 auto;
+      padding: 7px 11px;
+      border-radius: 0.625rem;
+      color: var(--cp-text-muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .nav a:hover { color: var(--cp-accent); background: var(--cp-accent-soft); }
+    main { padding: 24px 0 80px; }
+    section { margin-top: 56px; scroll-margin-top: 72px; }
+    h2 {
+      margin: 0 0 10px;
+      font-size: clamp(1.65rem, 3vw, 2.5rem);
+      letter-spacing: -0.035em;
+    }
+    h3 { margin: 0 0 8px; font-size: 1.08rem; }
+    .intro { max-width: 860px; margin: 0 0 24px; color: var(--cp-text-muted); }
+    .grid-4, .grid-3, .grid-2 {
+      display: grid;
+      gap: 16px;
+    }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .card {
+      padding: 20px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface);
+    }
+    .card p:last-child { margin-bottom: 0; }
+    .kicker {
+      margin-bottom: 4px;
+      color: var(--cp-accent);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .muted { color: var(--cp-text-muted); }
+    .callout {
+      margin: 20px 0;
+      padding: 18px 20px;
+      border: 1px solid var(--cp-border);
+      border-left: 5px solid var(--cp-accent);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+    }
+    .callout.good { border-left-color: var(--cp-success); }
+    .callout.warn { border-left-color: var(--cp-warning); }
+    .callout.danger { border-left-color: var(--cp-danger); }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .node {
+      position: relative;
+      min-height: 150px;
+      padding: 18px;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface);
+    }
+    .node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -18px;
+      z-index: 2;
+      width: 24px;
+      color: var(--cp-accent);
+      font-size: 1.3rem;
+      font-weight: 800;
+      text-align: center;
+      transform: translateY(-50%);
+    }
+    .node b { display: block; margin-bottom: 6px; }
+    .node span { color: var(--cp-text-muted); font-size: 0.9rem; }
+    .code-wrap { position: relative; margin: 14px 0 22px; }
+    pre {
+      margin: 0;
+      padding: 18px;
+      overflow: auto;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-bg-elevated);
+      color: var(--cp-text);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+    .copy {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 6px 9px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+      color: var(--cp-text-muted);
+      cursor: pointer;
+      font: inherit;
+    }
+    .copy:hover { color: var(--cp-accent); border-color: var(--cp-accent); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--cp-surface);
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid var(--cp-border);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--cp-surface-soft);
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .steps { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+    .steps li {
+      position: relative;
+      margin: 0 0 14px;
+      padding: 2px 0 16px 52px;
+      border-bottom: 1px solid var(--cp-border);
+      counter-increment: step;
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--cp-accent);
+      color: var(--cp-accent-fg);
+      font-weight: 800;
+    }
+    .steps li:last-child { border-bottom: 0; }
+    details {
+      margin: 12px 0;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+    }
+    summary { padding: 14px 16px; cursor: pointer; font-weight: 800; }
+    details > div { padding: 0 16px 16px; }
+    .graph {
+      padding: 24px;
+      overflow-x: auto;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface);
+    }
+    .graph pre {
+      min-width: 660px;
+      border: 0;
+      background: transparent;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--cp-text-muted);
+      font-size: 0.88rem;
+    }
+    .roadmap {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .phase {
+      padding: 18px;
+      border-top: 4px solid var(--cp-accent);
+      border-right: 1px solid var(--cp-border);
+      border-bottom: 1px solid var(--cp-border);
+      border-left: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+    }
+    .phase strong { color: var(--cp-accent); }
+    .sources li { margin-bottom: 8px; }
+    .footer {
+      padding: 24px 0 40px;
+      border-top: 1px solid var(--cp-border);
+      color: var(--cp-text-muted);
+      font-size: 0.9rem;
+    }
+    @media (max-width: 980px) {
+      .grid-4, .flow, .roadmap { grid-template-columns: repeat(2, 1fr); }
+      .node:nth-child(2)::after, .node:nth-child(4)::after { display: none; }
+    }
+    @media (max-width: 650px) {
+      .grid-4, .grid-3, .grid-2, .flow, .roadmap { grid-template-columns: 1fr; }
+      .node::after { display: none; }
+      .hero { padding-top: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <p class="eyebrow">Working POC · October 2, 2026</p>
+      <h1>How an Agent Suite can run on Substrate</h1>
+      <p class="lede">
+        Kaimahi defines, publishes, inspects, and lifts the immutable suite. AgentSessions provides
+        durable member sessions and observable hand-offs. Substrate supplies one independently
+        suspendable Actor for each active agent.
+      </p>
+      <div class="status-line">
+        <span class="pill live">Implemented: read-only Orka run view</span>
+        <span class="pill live">POC: deterministic Agent Suite OCI layout</span>
+        <span class="pill live">POC: durable specialist aggregation</span>
+        <span class="pill incubation">Next: controller-mediated delegation and run discovery</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav" aria-label="Page sections">
+    <div class="shell nav-inner">
+      <a href="#progress">Current progress</a>
+      <a href="#poc">Working POC</a>
+      <a href="#model">Ownership model</a>
+      <a href="#release">Suite release</a>
+      <a href="#lift">Lift to Substrate</a>
+      <a href="#run">Run model</a>
+      <a href="#canvas">Canvas projection</a>
+      <a href="#gaps">Required gaps</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#sources">Sources</a>
+    </div>
+  </nav>
+
+  <main class="shell">
+    <section id="progress">
+      <p class="kicker">What changed in Kaimahi</p>
+      <h2>The Canvas direction now has real code behind it</h2>
+      <p class="intro">
+        The Agent Suite remains an incubation idea, but Kaimahi's runtime-neutral run projection is
+        no longer hypothetical. PR #272 merged on October 2, 2026 and added a read-only Orka run
+        browser to the console.
+      </p>
+      <div class="grid-3">
+        <article class="card">
+          <span class="pill live">On main</span>
+          <h3>Observed run model</h3>
+          <p class="muted"><code>runview.Run</code> now models tasks, agents, parent relationships, observed hand-offs, ordered per-task events, and explicit missing evidence.</p>
+        </article>
+        <article class="card">
+          <span class="pill live">On main</span>
+          <h3>Read-only Orka adapter</h3>
+          <p class="muted">The console can browse recent root Tasks, verify child ownership, separate declared helper permission from observed delegation, and refuse stale or unreadable evidence.</p>
+        </article>
+        <article class="card">
+          <span class="pill incubation">Issues #273 and #274</span>
+          <h3>Release-to-run identity</h3>
+          <p class="muted">The new issues split declared suite inspection from the bridge that ties an observed run back to immutable suite and member revisions.</p>
+        </article>
+      </div>
+      <div class="callout good">
+        <b>Practical consequence:</b> an AgentSessions adapter does not need to invent the Canvas data
+        model. It needs to project AgentSessions records into the existing Kaimahi
+        <code>runview</code> types and supply the missing immutable revision evidence.
+      </div>
+    </section>
+
+    <section id="poc">
+      <p class="kicker">Branch <code>poc/agentsuite</code></p>
+      <h2>The issue #273 experiment now has an executable release and aggregation path</h2>
+      <p class="intro">
+        The sample suite contains one coordinator and two specialists. Kaimahi strictly resolves
+        their exact portable documents, computes immutable member and suite identities, exports a
+        standards-shaped OCI Image Layout, and can execute three durable AgentSessions turns:
+        purchasing, receiving, then coordinator aggregation.
+      </p>
+      <div class="grid-3">
+        <article class="card">
+          <span class="pill live">Resolve</span>
+          <h3>Strict suite graph</h3>
+          <p class="muted">The entry point, member roles, local source paths, declared <code>allowedAgents</code>, and aggregation inputs must agree. Unknown YAML fields, duplicate members, path escapes, and unsupported runtime behavior fail closed.</p>
+        </article>
+        <article class="card">
+          <span class="pill live">Package</span>
+          <h3>OCI Image Layout</h3>
+          <p class="muted">The layout contains a resolved JSON config, exact <code>suite.yaml</code>, exact member <code>agent.yaml</code> layers, an OCI artifact manifest, and <code>index.json</code>. Credentials and session state are excluded.</p>
+        </article>
+        <article class="card">
+          <span class="pill live">Run</span>
+          <h3>Explicit aggregation</h3>
+          <p class="muted">Each specialist gets an independent durable session and Substrate Actor, then is suspended after its output commits. Their recorded outputs become labeled inputs to the coordinator's third session, which produces the only stdout answer.</p>
+        </article>
+      </div>
+
+      <div class="code-wrap" style="margin-top: 22px">
+        <button class="copy" type="button">Copy</button>
+        <pre><code>kmx suite inspect ./examples/agent-suite/invoice-review
+
+kmx suite package ./examples/agent-suite/invoice-review \
+  --output /tmp/invoice-review-oci
+
+kmx suite inspect /tmp/invoice-review-oci
+
+kmx suite run ./examples/agent-suite/invoice-review \
+  --server 127.0.0.1:18080 \
+  --project agentsuite-poc \
+  --prompt "Should invoice 1042 be approved?"</code></pre>
+      </div>
+
+      <table style="margin-top: 22px">
+        <thead><tr><th>Identity</th><th>POC value</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Suite digest</td><td><code>sha256:363f996c79fd…</code></td><td>Digest of the canonical resolved graph and immutable member revisions</td></tr>
+          <tr><td>Manifest digest</td><td><code>sha256:d67691789eb1…</code></td><td>Digest of the OCI artifact manifest that links config and exact source layers</td></tr>
+          <tr><td>Run UID</td><td><code>run-&lt;random&gt;</code></td><td>Groups the three durable member sessions without pretending they are one session</td></tr>
+          <tr><td>Member digest</td><td><code>kmx.kaimahi.dev/agent-digest</code></td><td>Binds each observed execution to the exact portable agent revision</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <b>Current aggregation semantics:</b> Kaimahi deliberately sequences the two specialist
+        executions and the coordinator execution. This proves identity, durable evidence, and final
+        synthesis without claiming that AgentSessions already has a first-class cross-agent
+        delegation API. Parallelism and at-most-once delegated recovery remain the next contract.
+      </div>
+
+      <h3 style="margin-top: 28px">Live Substrate validation</h3>
+      <p class="intro">
+        On October 2, 2026, the sample ran end to end against the local Podman
+        <code>kind-ate</code> cluster and <code>qwen3:8b</code> through the existing
+        AgentSessions/Substrate host. Ollama received exactly three completion requests; replaying
+        all three journals did not add another request.
+      </p>
+      <table>
+        <thead><tr><th>Member</th><th>Session</th><th>Substrate Actor UID</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>purchasing-agent</td><td><code>sess-7bf8187d59d32f68a144a8e2</code></td><td><code>86ffb4e3-d2d5-4be1-8154-bae488cc2b8c</code></td><td>5 execution records, then checkpointed and cold</td></tr>
+          <tr><td>receiving-agent</td><td><code>sess-f6915becb49a87e27f9c7001</code></td><td><code>80a51368-4703-4d64-a010-ae38ba2625f7</code></td><td>5 execution records, then checkpointed and cold</td></tr>
+          <tr><td>invoice-coordinator</td><td><code>sess-671ebacbfa19d601f0f21b61</code></td><td><code>6b11d0e8-55d5-435c-8754-7900009198e2</code></td><td>Aggregated both durable outputs and remained live</td></tr>
+        </tbody>
+      </table>
+      <div class="callout good">
+        <b>What the aggregate proved:</b> both specialists recommended withholding approval for
+        100 units, but they disagreed about whether the receiving report itself was present. The
+        coordinator preserved that disagreement, attributed it to the correct specialists, and
+        recommended approval only after reconciling the eight-unit shortfall.
+      </div>
+    </section>
+
+    <section id="model">
+      <p class="kicker">Proposed product boundary</p>
+      <h2>Four layers, no duplicated authority</h2>
+      <div class="flow">
+        <div class="node">
+          <b>Kaimahi source</b>
+          <span>Authors agents and suite membership, calculates revisions, evaluates, and prepares a release.</span>
+        </div>
+        <div class="node">
+          <b>OCI registry</b>
+          <span>Stores the immutable Agent Suite manifest and references to exact agent artifacts.</span>
+        </div>
+        <div class="node">
+          <b>Kaimahi lift</b>
+          <span>Resolves the suite digest, renders target resources, records the deployment mapping and partial outcomes.</span>
+        </div>
+        <div class="node">
+          <b>AgentSessions</b>
+          <span>Owns durable member sessions, event order, replay, hand-off evidence, and run grouping.</span>
+        </div>
+        <div class="node">
+          <b>Substrate</b>
+          <span>Creates, resumes, suspends, forks, and isolates the Actor behind each active session.</span>
+        </div>
+      </div>
+      <table style="margin-top: 22px">
+        <thead><tr><th>Concern</th><th>Source of truth</th><th>Must not be inferred from</th></tr></thead>
+        <tbody>
+          <tr><td>Suite membership and entry point</td><td>OCI Agent Suite release</td><td>Which agents happened to run</td></tr>
+          <tr><td>Agent revision</td><td>Immutable member artifact digest</td><td>Today’s same-named agent</td></tr>
+          <tr><td>Deployment mapping</td><td>Kaimahi lift receipt + live target identity</td><td>A registry tag alone</td></tr>
+          <tr><td>Tasks and hand-offs</td><td>AgentSessions durable records</td><td>Declared <code>allowedAgents</code></td></tr>
+          <tr><td>Compute lifecycle</td><td>AgentSessions Runtime SPI + Substrate</td><td>Kaimahi UI state</td></tr>
+          <tr><td>Run presentation</td><td>Kaimahi <code>runview</code> projection</td><td>A second Kaimahi task database</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="release">
+      <p class="kicker">Declared side</p>
+      <h2>The Agent Suite is the immutable release boundary</h2>
+      <p class="intro">
+        The authored suite can use local agent paths. Before publication, Kaimahi resolves every
+        member to an immutable revision and produces a suite digest over the resolved graph.
+      </p>
+      <div class="code-wrap">
+        <button class="copy" type="button">Copy</button>
+        <pre><code>apiVersion: kmx.kaimahi.dev/v1alpha1
+kind: AgentSuite
+metadata:
+  name: invoice-review
+spec:
+  entrypoint: invoice-coordinator
+  agents:
+    - name: invoice-coordinator
+      source: ../../agents/invoice-coordinator
+      coordination:
+        allowedAgents:
+          - purchasing-agent
+          - receiving-agent
+    - name: purchasing-agent
+      source: ../../agents/purchasing-agent
+    - name: receiving-agent
+      source: ../../agents/receiving-agent
+  requirements:
+    runtime: agentsessions-substrate
+    capabilities:
+      durableSessions: true
+      observedHandOffs: true
+      statelessReplay: true</code></pre>
+      </div>
+
+      <h3>Resolved release form</h3>
+      <div class="code-wrap">
+        <button class="copy" type="button">Copy</button>
+        <pre><code>suite: invoice-review
+digest: sha256:aaaa...
+entrypoint: invoice-coordinator
+members:
+  invoice-coordinator:
+    agentDigest: sha256:1111...
+    harnessImage: ghcr.io/acme/invoice-coordinator@sha256:...
+    actorTemplateDigest: sha256:...
+  purchasing-agent:
+    agentDigest: sha256:2222...
+    harnessImage: ghcr.io/acme/purchasing-agent@sha256:...
+    actorTemplateDigest: sha256:...
+  receiving-agent:
+    agentDigest: sha256:3333...
+    harnessImage: ghcr.io/acme/receiving-agent@sha256:...
+    actorTemplateDigest: sha256:...</code></pre>
+      </div>
+
+      <div class="grid-2">
+        <article class="card">
+          <h3>Include</h3>
+          <p class="muted">Member digests, entry point, declared relationships, harness descriptors, runtime capability requirements, tool declarations, evaluation definitions, and provenance.</p>
+        </article>
+        <article class="card">
+          <h3>Exclude</h3>
+          <p class="muted">Credentials, cluster-specific secrets, live session UIDs, Actor addresses, mutable runtime history, and model conversations.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="lift">
+      <p class="kicker">Deployment side</p>
+      <h2>Lift resolves the suite once, then prepares every member</h2>
+      <p class="intro">
+        Kaimahi should bind deployment to the suite digest, not continue following a mutable tag.
+        Each member becomes a registry entry that maps an AgentSessions harness ID to a Substrate
+        ActorTemplate and its required capabilities.
+      </p>
+      <ol class="steps">
+        <li><b>Resolve the OCI tag to one suite digest.</b> Fail or require renewed consent if a previously reviewed tag moved.</li>
+        <li><b>Validate every member.</b> Confirm member digests, coordination references, harness descriptors, model/tool bindings, and target capabilities.</li>
+        <li><b>Install or verify ActorTemplates.</b> Pin each harness image by digest; never lift a moving image tag as the reviewed revision.</li>
+        <li><b>Configure the AgentSessions host registry.</b> Register one Placer per suite member, each backed by the corresponding Substrate Runtime backend.</li>
+        <li><b>Record a suite deployment receipt.</b> Bind the suite digest to target identity, member digests, ActorTemplate identities, and AgentSessions endpoint.</li>
+        <li><b>Report partial outcomes honestly.</b> A suite is not Ready when one required member failed admission or registration.</li>
+      </ol>
+
+      <div class="code-wrap">
+        <button class="copy" type="button">Copy</button>
+        <pre><code>Requested:   ghcr.io/acme/invoice-review:v1
+Resolved:    ghcr.io/acme/invoice-review@sha256:aaaa...
+Target:      production/agents
+Runtime:     agentsessions-substrate
+
+Plan:
+  verify  invoice-coordinator @ sha256:1111...
+  create  purchasing-agent    @ sha256:2222...
+  reuse   receiving-agent     @ sha256:3333...
+  update  AgentSessions member registry
+  write   suite deployment receipt
+
+No session is created during lift.
+Actors are created lazily when a member first executes.</code></pre>
+      </div>
+      <div class="callout">
+        <b>Why lazy Actors?</b> The Suite is a release and deployment unit, not a request to keep every
+        agent running. AgentSessions can create the entry-point Actor on the first turn and create
+        helper Actors only when delegation actually happens.
+      </div>
+    </section>
+
+    <section id="run">
+      <p class="kicker">Execution side</p>
+      <h2>One suite run, multiple durable sessions</h2>
+      <p class="intro">
+        The coordinator and each helper should have a separate AgentSessions session. This gives every
+        member its own event log, fence, compute lifecycle, replay boundary, and Substrate Actor.
+      </p>
+      <div class="graph">
+        <pre><code>Suite run: run-01K...  ·  suite sha256:aaaa...
+
+                   coordinator session
+                   agent sha256:1111...
+                   Actor: invoice-coordinator
+                          |
+                observed hand-off h-01
+                    /               \
+                   v                 v
+       purchasing session       receiving session
+       agent sha256:2222...     agent sha256:3333...
+       Actor: purchasing        Actor: receiving
+             |                        |
+          completed              waiting for input
+                    \             /
+                     result references
+                           |
+                           v
+                 coordinator final turn</code></pre>
+        <div class="legend">
+          <span>Suite membership: declared by OCI release</span>
+          <span>Hand-offs: observed in AgentSessions</span>
+          <span>Actors: managed independently by Substrate</span>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 26px">Session metadata binding</h3>
+      <div class="code-wrap">
+        <button class="copy" type="button">Copy</button>
+        <pre><code>annotations:
+  kmx.kaimahi.dev/suite-digest: sha256:aaaa...
+  kmx.kaimahi.dev/agent-digest: sha256:1111...
+  kmx.kaimahi.dev/suite-member: invoice-coordinator
+  kmx.kaimahi.dev/run-uid: run-01K...
+  kmx.kaimahi.dev/deployment-uid: deploy-01K...
+
+origin:
+  source: kmx://suite/invoice-review
+  subject: runs/run-01K...
+  attributes:
+    suiteDigest: sha256:aaaa...</code></pre>
+      </div>
+
+      <details open>
+        <summary>How delegation should work</summary>
+        <div>
+          <ol class="steps">
+            <li>The coordinator calls a controller-mediated <code>agentsessions.delegate</code> tool with target member, input, and idempotency key.</li>
+            <li>The host verifies the target is allowed by the deployed suite digest—not merely by a caller-supplied name.</li>
+            <li>The host creates a distinct helper session using that member's harness and immutable agent digest.</li>
+            <li>The parent journal records the hand-off intent before the child executes; the child stores the same hand-off ID and parent session identity.</li>
+            <li>The helper's first Exec lazily creates or resumes its own Substrate Actor.</li>
+            <li>The helper result is recorded, linked back to the hand-off, and returned to the coordinator.</li>
+            <li>Crash recovery uses the idempotency key and durable hand-off state so the helper is not created or executed twice.</li>
+          </ol>
+        </div>
+      </details>
+
+      <div class="callout warn">
+        <b>Do not use AgentSessions Fork for cross-agent delegation.</b> Fork deliberately inherits the
+        parent's harness and model because it branches the same workload. It is ideal for parallel
+        hypotheses or cloned state of one agent, but it cannot select a different suite member.
+      </div>
+    </section>
+
+    <section id="canvas">
+      <p class="kicker">Projection side</p>
+      <h2>Map AgentSessions evidence into Kaimahi's existing runview</h2>
+      <p class="intro">
+        A new <code>runview/agentsessions.Reader</code> can project durable session and hand-off records
+        into the types Kaimahi already uses for Orka.
+      </p>
+      <table>
+        <thead><tr><th>Kaimahi runview field</th><th>AgentSessions source</th><th>Evidence rule</th></tr></thead>
+        <tbody>
+          <tr><td><code>Run.ID</code></td><td>Suite run UID stored on every member session</td><td>Never synthesize from a display name</td></tr>
+          <tr><td><code>Task.ID</code></td><td>Session UID or execution ID, depending on selected granularity</td><td>Stable durable identity</td></tr>
+          <tr><td><code>Task.Agent</code></td><td>Suite member annotation + harness ID</td><td>Resolve to the deployed member digest</td></tr>
+          <tr><td><code>Task.ParentTask</code></td><td>Durable hand-off parent session/execution</td><td>Not inferred from timestamps</td></tr>
+          <tr><td><code>HandOff</code></td><td>Matched parent intent and child acceptance records</td><td>Declared permission is not an observed hand-off</td></tr>
+          <tr><td><code>StatusChanges</code></td><td>Typed lifecycle, END, ERROR, approval and input events</td><td>Preserve each session's sequence</td></tr>
+          <tr><td><code>Events</code></td><td>Replay stream from the member session log</td><td>Safe summaries only; payload access remains separate</td></tr>
+          <tr><td><code>RevisionMissing</code></td><td>Failure to bind member session to suite member digest</td><td>Unknown remains unknown</td></tr>
+          <tr><td><code>DiscoveryMissing</code></td><td>Unlistable child/hand-off index or denied session read</td><td>Missing is not failed or empty</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <b>Ordering rule:</b> event sequence establishes order within one session. Cross-session causality
+        comes from the hand-off ID and explicit parent/child records. Wall-clock timestamps alone must
+        not be used to claim a causal order between Actors.
+      </div>
+    </section>
+
+    <section id="gaps">
+      <p class="kicker">What must be added</p>
+      <h2>The smallest contracts needed for a credible first version</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Current state</th><th>Proposed addition</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Kaimahi Suite schema</td>
+            <td><span class="pill live">POC branch</span> Strict reader, deterministic suite digest, sample graph, and OCI Image Layout are implemented.</td>
+            <td>Push/pull through a registry, semantic diff, signatures/provenance, and a compatibility commitment.</td>
+          </tr>
+          <tr>
+            <td>Kaimahi runtime adapter</td>
+            <td><span class="pill live">Partial foundation</span> Runtime/session and runview contracts exist; Orka is implemented.</td>
+            <td><code>agentsessions-substrate</code> lifecycle adapter plus <code>runview/agentsessions.Reader</code>.</td>
+          </tr>
+          <tr>
+            <td>AgentSessions run grouping</td>
+            <td>Sessions have annotations and Origin, but no first-class suite run object.</td>
+            <td>Start with immutable annotations; add a durable indexed run/hand-off table or API before large-scale discovery.</td>
+          </tr>
+          <tr>
+            <td>Cross-agent delegation</td>
+            <td>Fork branches the same harness/model. Tool calls are durable but not a complete child-session contract.</td>
+            <td>Controller-mediated delegate operation with target member validation, hand-off ID, child session identity, and idempotent recovery.</td>
+          </tr>
+          <tr>
+            <td>Historical revision binding</td>
+            <td>AgentSessions can store free-form annotations but does not validate an OCI suite.</td>
+            <td>Kaimahi lift signs or records the suite/member mapping; host admits sessions only against that deployed mapping.</td>
+          </tr>
+          <tr>
+            <td>Authorization</td>
+            <td>Reference AgentSessions transport is plaintext and does not enforce authorization.</td>
+            <td>Authenticated caller identity, per-project/session reads, delegated execution authority, and redacted summaries before shared Canvas use.</td>
+          </tr>
+          <tr>
+            <td>Run discovery</td>
+            <td><code>ListSessions</code> filters by project, not annotations or run UID.</td>
+            <td>Indexed suite-run lookup or a dedicated read API; do not full-scan every session to draw Canvas.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="roadmap">
+      <p class="kicker">Recommended implementation order</p>
+      <h2>Prove identity and evidence before building the full Suite Canvas</h2>
+      <div class="roadmap">
+        <article class="phase">
+          <strong>Phase 1</strong>
+          <h3>One suite, fixed target</h3>
+          <p class="muted">POC implemented: coordinator plus two specialists, suite/member digest annotations, durable member sessions, and explicit final aggregation. Per-member ActorTemplates remain a lift concern.</p>
+        </article>
+        <article class="phase">
+          <strong>Phase 2</strong>
+          <h3>Durable delegation</h3>
+          <p class="muted">Add the mediated delegate operation, child session creation, hand-off identity, at-most-once recovery, and parallel helper execution.</p>
+        </article>
+        <article class="phase">
+          <strong>Phase 3</strong>
+          <h3>Run Canvas adapter</h3>
+          <p class="muted">Project one real run into <code>runview</code>, reconnect without duplicates, and label missing, unreadable, or mismatched evidence.</p>
+        </article>
+        <article class="phase">
+          <strong>Phase 4</strong>
+          <h3>OCI release and lift</h3>
+          <p class="muted">Local OCI Image Layout export is implemented. Registry push/pull, tag resolution, semantic diff, deployment receipts, partial outcomes, status, and evaluation remain.</p>
+        </article>
+      </div>
+
+      <h3 style="margin-top: 28px">First end-to-end acceptance test</h3>
+      <ol>
+        <li>Publish a suite with coordinator, purchasing, and receiving member digests.</li>
+        <li>Lift it to one AgentSessions host backed by Substrate.</li>
+        <li>Start one coordinator session annotated with the exact suite digest.</li>
+        <li>Delegate two checks in parallel, creating two helper sessions and two Actors.</li>
+        <li>Suspend the idle purchasing Actor while receiving waits for input.</li>
+        <li>Reconnect the Canvas and resume from durable cursors without duplicated events.</li>
+        <li>Show declared relationships separately from the two observed hand-offs.</li>
+        <li>Bind every participant to its immutable member digest; deliberately remove one binding and show <b>missing</b>, not failed.</li>
+        <li>Replay one stateless helper and prove no model or tool effect is repeated.</li>
+        <li>Move the suite tag and confirm the historical run still displays the deployed digest.</li>
+      </ol>
+    </section>
+
+    <section id="sources">
+      <p class="kicker">Grounding</p>
+      <h2>Issues and implementation sources</h2>
+      <ul class="sources">
+        <li><a href="https://github.com/kaimahi-agents/kaimahi/issues/267">kaimahi-agents/kaimahi#267 — runtime-neutral Agent Canvas</a></li>
+        <li><a href="https://github.com/kaimahi-agents/kaimahi/issues/273">kaimahi-agents/kaimahi#273 — immutable Agent Suite Release Canvas</a></li>
+        <li><a href="https://github.com/kaimahi-agents/kaimahi/issues/274">kaimahi-agents/kaimahi#274 — release-to-run identity bridge</a></li>
+        <li><a href="https://github.com/kaimahi-agents/kaimahi/pull/272">kaimahi-agents/kaimahi#272 — merged read-only Orka run browser</a></li>
+        <li><a href="https://github.com/kaimahi-agents/kaimahi/blob/main/internal/kmx/runview/model.go">Current Kaimahi runview model</a></li>
+        <li><a href="https://github.com/kaimahi-agents/kaimahi/blob/main/internal/kmx/runview/orka/reader.go">Current Orka runview projection</a></li>
+        <li><a href="https://github.com/sajayantony/kaimahi/blob/poc/agentsuite/internal/kmx/agentsuite/suite.go">POC strict Agent Suite resolver and identity model</a></li>
+        <li><a href="https://github.com/sajayantony/kaimahi/blob/poc/agentsuite/internal/kmx/agentsuite/oci.go">POC OCI Image Layout exporter and verifier</a></li>
+        <li><a href="https://github.com/sajayantony/kaimahi/blob/poc/agentsuite/internal/kmx/app/agent_suite.go">POC durable specialist execution and aggregation</a></li>
+        <li><a href="https://github.com/sajayantony/agentsessions/blob/substrate-e2e-poc/api/session.proto">AgentSessions Sessions API and fork lineage</a></li>
+        <li><a href="https://github.com/sajayantony/agentsessions/blob/substrate-e2e-poc/api/harness.go">AgentSessions Harness and effect mediation contract</a></li>
+        <li><a href="https://github.com/sajayantony/agentsessions/blob/substrate-e2e-poc/runtime/substrate/substrate.go">AgentSessions Substrate Runtime backend</a></li>
+        <li><a href="https://github.com/sajayantony/substrate-kb/blob/main/flows.json">Refreshed Substrate/AgentSessions curated flow index</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      Updated October 2, 2026 for the <code>poc/agentsuite</code> branch. The local suite reader,
+      OCI layout exporter, sample suite, and sequential durable aggregation are working POC code;
+      registry lifecycle, mediated delegation, and Suite Canvas projection remain incubation work.
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".copy").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const code = button.parentElement.querySelector("code").textContent;
+        try {
+          await navigator.clipboard.writeText(code);
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          setTimeout(() => { button.textContent = previous; }, 1200);
+        } catch {
+          button.textContent = "Select text";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+apiVersion: kmx.kaimahi.dev/v1alpha1
+kind: AgentSuite
+metadata:
+  name: invoice-review
+spec:
+  entrypoint: invoice-coordinator
+  agents:
+    - name: invoice-coordinator
+      source: agents/invoice-coordinator
+      role: coordinator
+    - name: purchasing-agent
+      source: agents/purchasing-agent
+      role: specialist
+    - name: receiving-agent
+      source: agents/receiving-agent
+      role: specialist
+  aggregation:
+    member: invoice-coordinator
+    strategy: synthesize
+    inputs:
+      - purchasing-agent
+      - receiving-agent
+  requirements:
+    runtime: agentsessions-substrate
+    capabilities:
+      - durableSessions
+      - observedHandOffs
+      - statelessReplay
