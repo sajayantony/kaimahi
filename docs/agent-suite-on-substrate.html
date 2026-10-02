@@ -492,7 +492,7 @@
       <a href="#release">Suite release</a>
       <a href="#lift">Lift to Substrate</a>
       <a href="#run">Run model</a>
-      <a href="#canvas">Canvas projection</a>
+      <a href="#canvas">Suite Canvas</a>
       <a href="#gaps">Required gaps</a>
       <a href="#roadmap">Roadmap</a>
       <a href="#sources">Sources</a>
@@ -1087,8 +1087,61 @@ origin:
     </section>
 
     <section id="canvas">
-      <p class="kicker">Projection side</p>
-      <h2>Map AgentSessions evidence into Kaimahi's existing runview</h2>
+      <p class="kicker">Authoring and projection sides</p>
+      <h2>Canvas can edit the physical Agent Suite and observe its runs</h2>
+      <p class="intro">
+        An Agent Suite is the complete physical, on-disk representation of the system: its
+        <code>suite.yaml</code>, member directories, and exact <code>agent.yaml</code> documents.
+        Canvas can be the full editing experience over that representation, while the same product
+        surface can project durable runtime evidence without inventing a second source of truth.
+      </p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="pill proposal">Build Canvas</span>
+          <h3>Write-through suite editing</h3>
+          <p class="muted">Open a suite directory as a graph, mutate members and relationships through UI gestures or automation, then write the change back to the physical files. Source control, strict parsing, and the resulting digest remain authoritative.</p>
+        </article>
+        <article class="card">
+          <span class="pill live">Run Canvas</span>
+          <h3>Read-only evidence projection</h3>
+          <p class="muted">Bind the immutable suite and member revisions to AgentSessions records, then render sessions, hand-offs, lifecycle state, outputs, and missing evidence without changing the released source.</p>
+        </article>
+      </div>
+
+      <div class="callout good">
+        <b>One Canvas, two authority models:</b> authoring gestures are commands that mutate the
+        on-disk Agent Suite; runtime views are projections that read durable AgentSessions evidence.
+        Canvas should never become a shadow task or suite database that can drift from either source.
+      </div>
+
+      <h3>Editing round trip</h3>
+      <ol class="steps">
+        <li><b>Open the physical suite.</b> Read <code>suite.yaml</code> and every referenced portable agent document into one editable graph.</li>
+        <li><b>Apply a typed mutation.</b> A UI action, CLI command, or other tool adds, removes, renames, reconnects, or configures an agent through the same mutation contract.</li>
+        <li><b>Write the affected files.</b> Update the suite graph and member documents together so relationships such as entry point, roles, <code>allowedAgents</code>, and aggregation inputs cannot drift.</li>
+        <li><b>Reparse and validate from disk.</b> The strict Suite reader is the acceptance boundary; unknown fields, broken references, duplicate members, unsafe paths, and incompatible portable behavior still fail closed.</li>
+        <li><b>Show the semantic diff and new identity.</b> Canvas presents the changed files, graph-level meaning, validation result, member digests, and recomputed suite digest before package or commit.</li>
+      </ol>
+
+      <table>
+        <thead><tr><th>Canvas mutation</th><th>Physical on-disk change</th><th>Required guardrail</th></tr></thead>
+        <tbody>
+          <tr><td>Add a specialist</td><td>Create its portable agent directory and <code>agent.yaml</code>; add a member to <code>suite.yaml</code>; update coordinator permission and aggregation inputs.</td><td>Use one coordinated mutation so a half-connected member is never accepted.</td></tr>
+          <tr><td>Connect or disconnect agents</td><td>Change declared <code>allowedAgents</code> and any aggregation input references represented by that edge.</td><td>Validate the target exists and preserve the coordinator/specialist role rules.</td></tr>
+          <tr><td>Edit model or instructions</td><td>Change the selected member's exact <code>agent.yaml</code>.</td><td>Recompute that portable digest and the enclosing suite digest.</td></tr>
+          <tr><td>Rename or remove a member</td><td>Update member metadata, source path, entry point, permissions, and aggregation references; optionally remove its directory after explicit confirmation.</td><td>Present the complete cross-file diff and reject dangling references.</td></tr>
+          <tr><td>Package a release</td><td>Do not rewrite source; resolve the validated files into canonical config and content-addressed OCI blobs.</td><td>Show the pinned suite and manifest digests produced from the saved state.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <b>Mutation boundary:</b> Canvas should not directly patch arbitrary YAML fragments. It should
+        issue typed suite operations, write complete affected documents, and accept the edit only
+        after reopening the files through the same strict resolver used by <code>kmx suite inspect</code>.
+      </div>
+
+      <h3 style="margin-top: 30px">Project AgentSessions evidence into Kaimahi's existing runview</h3>
       <p class="intro">
         A new <code>runview/agentsessions.Reader</code> can project durable session and hand-off records
         into the types Kaimahi already uses for Orka.
@@ -1127,6 +1180,11 @@ origin:
             <td>Push/pull through a registry, semantic diff, signatures/provenance, and a compatibility commitment.</td>
           </tr>
           <tr>
+            <td>Suite Canvas editing</td>
+            <td>The physical suite is editable as files, but there is no typed visual mutation layer over the complete graph.</td>
+            <td>Cross-file mutation commands, dry-run semantic diff, strict round-trip validation, digest preview, source-control integration, and explicit destructive-action confirmation.</td>
+          </tr>
+          <tr>
             <td>Kaimahi runtime adapter</td>
             <td><span class="pill live">Partial foundation</span> Runtime/session and runview contracts exist; Orka is implemented.</td>
             <td><code>agentsessions-substrate</code> lifecycle adapter plus <code>runview/agentsessions.Reader</code>.</td>
@@ -1162,7 +1220,7 @@ origin:
 
     <section id="roadmap">
       <p class="kicker">Recommended implementation order</p>
-      <h2>Prove identity and evidence before building the full Suite Canvas</h2>
+      <h2>Prove identity and safe mutation before building the full Suite Canvas</h2>
       <div class="roadmap">
         <article class="phase">
           <strong>Phase 1</strong>
@@ -1176,8 +1234,8 @@ origin:
         </article>
         <article class="phase">
           <strong>Phase 3</strong>
-          <h3>Run Canvas adapter</h3>
-          <p class="muted">Project one real run into <code>runview</code>, reconnect without duplicates, and label missing, unreadable, or mismatched evidence.</p>
+          <h3>Build + Run Canvas</h3>
+          <p class="muted">Add typed, write-through editing of the physical suite with strict round-trip validation; project one real run into <code>runview</code> and label missing, unreadable, or mismatched evidence.</p>
         </article>
         <article class="phase">
           <strong>Phase 4</strong>
