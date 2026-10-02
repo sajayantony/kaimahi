@@ -302,12 +302,95 @@
       border-radius: 16px;
       background: var(--cp-surface);
     }
-    .graph pre {
-      min-width: 660px;
-      border: 0;
-      background: transparent;
-      font-size: 0.95rem;
-      text-align: center;
+    .architecture-svg, .oci-svg {
+      display: block;
+      width: 100%;
+      min-width: 980px;
+      height: auto;
+    }
+    .svg-lane {
+      fill: var(--cp-bg-elevated);
+      stroke: var(--cp-border);
+      stroke-width: 1.5;
+    }
+    .svg-box {
+      fill: var(--cp-surface);
+      stroke: var(--cp-border-strong);
+      stroke-width: 1.5;
+    }
+    .svg-box-accent {
+      fill: var(--cp-accent-soft);
+      stroke: var(--cp-accent);
+      stroke-width: 2;
+    }
+    .svg-box-success {
+      fill: var(--cp-surface);
+      stroke: var(--cp-success);
+      stroke-width: 2;
+    }
+    .svg-box-warning {
+      fill: var(--cp-surface);
+      stroke: var(--cp-warning);
+      stroke-width: 2;
+    }
+    .svg-title {
+      fill: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .svg-label {
+      fill: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .svg-muted {
+      fill: var(--cp-text-muted);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 12px;
+    }
+    .svg-code {
+      fill: var(--cp-text-muted);
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 11px;
+    }
+    .svg-step {
+      fill: var(--cp-accent);
+    }
+    .svg-step-text {
+      fill: var(--cp-accent-fg);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      text-anchor: middle;
+    }
+    .svg-line {
+      fill: none;
+      stroke: var(--cp-border-strong);
+      stroke-width: 2;
+    }
+    .svg-line-accent {
+      fill: none;
+      stroke: var(--cp-accent);
+      stroke-width: 2.5;
+    }
+    .svg-line-success {
+      fill: none;
+      stroke: var(--cp-success);
+      stroke-width: 2.5;
+    }
+    .svg-line-dashed {
+      fill: none;
+      stroke: var(--cp-border-strong);
+      stroke-width: 2;
+      stroke-dasharray: 7 6;
+    }
+    .svg-boundary {
+      fill: none;
+      stroke: var(--cp-warning);
+      stroke-width: 2;
+      stroke-dasharray: 8 7;
     }
     .legend {
       display: flex;
@@ -316,6 +399,38 @@
       margin-top: 12px;
       color: var(--cp-text-muted);
       font-size: 0.88rem;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--cp-border-strong);
+    }
+    .legend-dot.accent { background: var(--cp-accent); }
+    .legend-dot.success { background: var(--cp-success); }
+    .legend-dot.warning { background: var(--cp-warning); }
+    .composition {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .composition article {
+      padding: 16px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+    }
+    .composition code {
+      display: inline-block;
+      margin-bottom: 5px;
+      color: var(--cp-accent);
+      font-weight: 700;
     }
     .roadmap {
       display: grid;
@@ -344,7 +459,7 @@
       .node:nth-child(2)::after, .node:nth-child(4)::after { display: none; }
     }
     @media (max-width: 650px) {
-      .grid-4, .grid-3, .grid-2, .flow, .roadmap { grid-template-columns: 1fr; }
+      .grid-4, .grid-3, .grid-2, .flow, .roadmap, .composition { grid-template-columns: 1fr; }
       .node::after { display: none; }
       .hero { padding-top: 40px; }
     }
@@ -571,7 +686,12 @@ spec:
       statelessReplay: true</code></pre>
       </div>
 
-      <h3>Resolved release form</h3>
+      <h3>Target resolved release form</h3>
+      <p class="intro">
+        The following is the proposed lift-ready shape. The current POC config stops at portable
+        member identity and model selection; harness image and ActorTemplate binding belong in a
+        future deployment receipt rather than being inferred from the local source tree.
+      </p>
       <div class="code-wrap">
         <button class="copy" type="button">Copy</button>
         <pre><code>suite: invoice-review
@@ -592,15 +712,155 @@ members:
     actorTemplateDigest: sha256:...</code></pre>
       </div>
 
+      <h3>What the OCI Image Layout contains</h3>
+      <p class="intro">
+        The POC writes a standard OCI Image Layout directory. Files are addressed by their content
+        digest; the small JSON descriptors connect the root index to one Agent Suite artifact
+        manifest, then to the resolved suite config and exact authored YAML layers.
+      </p>
+      <div class="graph">
+        <svg class="oci-svg" viewBox="0 0 1120 620" role="img" aria-labelledby="oci-title oci-desc">
+          <title id="oci-title">Composition of the Kaimahi Agent Suite OCI Image Layout</title>
+          <desc id="oci-desc">The OCI layout marker and index reference one artifact manifest. The manifest references the resolved suite config, the exact suite YAML, and three exact portable agent YAML layers.</desc>
+          <defs>
+            <marker id="arrow-oci" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="var(--cp-accent)"></path>
+            </marker>
+          </defs>
+
+          <rect class="svg-lane" x="15" y="15" width="1090" height="590" rx="16"></rect>
+          <text class="svg-title" x="40" y="48">invoice-review-oci/</text>
+          <text class="svg-muted" x="40" y="70">Standard OCI Image Layout 1.0.0 · every blob verified by sha256 digest and byte size</text>
+
+          <rect class="svg-box" x="40" y="100" width="225" height="82" rx="10"></rect>
+          <text class="svg-label" x="58" y="126">oci-layout</text>
+          <text class="svg-code" x="58" y="149">imageLayoutVersion: 1.0.0</text>
+          <text class="svg-muted" x="58" y="169">Identifies the directory format</text>
+
+          <rect class="svg-box-accent" x="40" y="215" width="225" height="112" rx="10"></rect>
+          <text class="svg-label" x="58" y="241">index.json</text>
+          <text class="svg-code" x="58" y="264">OCI image index v1</text>
+          <text class="svg-code" x="58" y="284">manifests[0].digest</text>
+          <text class="svg-muted" x="58" y="307">One suite release entry point</text>
+
+          <path class="svg-line-accent" d="M265 271 H350" marker-end="url(#arrow-oci)"></path>
+          <text class="svg-muted" x="278" y="259">resolves</text>
+
+          <rect class="svg-box-accent" x="360" y="185" width="340" height="172" rx="10"></rect>
+          <text class="svg-label" x="380" y="214">blobs/sha256/&lt;manifest-digest&gt;</text>
+          <text class="svg-code" x="380" y="239">application/vnd.oci.image.manifest.v1+json</text>
+          <text class="svg-code" x="380" y="262">artifactType: application/vnd.kaimahi.agent-suite.v1</text>
+          <text class="svg-muted" x="380" y="288">Config descriptor → canonical resolved suite</text>
+          <text class="svg-muted" x="380" y="309">Layer descriptors → exact source documents</text>
+          <text class="svg-muted" x="380" y="330">Annotations → suite digest, runtime, aggregator</text>
+
+          <path class="svg-line-accent" d="M530 357 V405" marker-end="url(#arrow-oci)"></path>
+          <text class="svg-muted" x="542" y="389">config + layers</text>
+
+          <rect class="svg-box-success" x="40" y="435" width="245" height="132" rx="10"></rect>
+          <text class="svg-label" x="58" y="462">Resolved suite config</text>
+          <text class="svg-code" x="58" y="485">...agent-suite.config.v1+json</text>
+          <text class="svg-muted" x="58" y="510">Entry point, runtime, capabilities,</text>
+          <text class="svg-muted" x="58" y="530">aggregation graph, member names,</text>
+          <text class="svg-muted" x="58" y="550">models and portable digests</text>
+
+          <rect class="svg-box" x="305" y="435" width="185" height="132" rx="10"></rect>
+          <text class="svg-label" x="323" y="462">suite.yaml layer</text>
+          <text class="svg-code" x="323" y="485">...suite.source.v1+yaml</text>
+          <text class="svg-muted" x="323" y="510">Exact authored bytes</text>
+          <text class="svg-muted" x="323" y="530">Title annotation:</text>
+          <text class="svg-code" x="323" y="550">suite.yaml</text>
+
+          <rect class="svg-box" x="510" y="435" width="185" height="132" rx="10"></rect>
+          <text class="svg-label" x="528" y="462">Coordinator layer</text>
+          <text class="svg-code" x="528" y="485">...portable-agent.v1+yaml</text>
+          <text class="svg-muted" x="528" y="510">Exact agent.yaml bytes</text>
+          <text class="svg-muted" x="528" y="530">Member + portable digest</text>
+          <text class="svg-muted" x="528" y="550">annotations</text>
+
+          <rect class="svg-box" x="715" y="435" width="170" height="132" rx="10"></rect>
+          <text class="svg-label" x="733" y="462">Purchasing layer</text>
+          <text class="svg-code" x="733" y="485">portable agent YAML</text>
+          <text class="svg-muted" x="733" y="510">Exact agent.yaml</text>
+          <text class="svg-muted" x="733" y="530">sha256 addressed</text>
+
+          <rect class="svg-box" x="905" y="435" width="170" height="132" rx="10"></rect>
+          <text class="svg-label" x="923" y="462">Receiving layer</text>
+          <text class="svg-code" x="923" y="485">portable agent YAML</text>
+          <text class="svg-muted" x="923" y="510">Exact agent.yaml</text>
+          <text class="svg-muted" x="923" y="530">sha256 addressed</text>
+
+          <path class="svg-line" d="M530 405 H162 V435"></path>
+          <path class="svg-line" d="M530 405 H397 V435"></path>
+          <path class="svg-line" d="M530 405 H602 V435"></path>
+          <path class="svg-line" d="M530 405 H800 V435"></path>
+          <path class="svg-line" d="M530 405 H990 V435"></path>
+        </svg>
+      </div>
+
+      <table style="margin-top: 18px">
+        <thead><tr><th>Object</th><th>Exact media or artifact type</th><th>Payload and role</th></tr></thead>
+        <tbody>
+          <tr><td>Root index</td><td><code>application/vnd.oci.image.index.v1+json</code></td><td>Contains one descriptor for the suite artifact manifest.</td></tr>
+          <tr><td>Artifact manifest</td><td><code>application/vnd.oci.image.manifest.v1+json</code><br><code>application/vnd.kaimahi.agent-suite.v1</code></td><td>Links the config and four source layers; records suite digest, runtime, and aggregation member annotations.</td></tr>
+          <tr><td>Resolved config</td><td><code>application/vnd.kaimahi.agent-suite.config.v1+json</code></td><td>Canonical JSON whose sha256 digest is the suite digest.</td></tr>
+          <tr><td>Suite source layer</td><td><code>application/vnd.kaimahi.agent-suite.source.v1+yaml</code></td><td>Exact authored <code>suite.yaml</code> bytes.</td></tr>
+          <tr><td>Three member layers</td><td><code>application/vnd.kaimahi.portable-agent.v1+yaml</code></td><td>Exact coordinator, purchasing, and receiving <code>agent.yaml</code> bytes, each annotated with member name and portable digest.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="composition">
+        <article>
+          <code>index.json</code>
+          <b>Discover the release</b>
+          <p class="muted">Contains exactly one manifest descriptor in the POC: media type, manifest digest, size, artifact type, suite name, and suite digest annotation.</p>
+        </article>
+        <article>
+          <code>artifact manifest</code>
+          <b>Connect identity to content</b>
+          <p class="muted">Declares the Agent Suite artifact type and links the canonical config plus every exact YAML layer by digest and size.</p>
+        </article>
+        <article>
+          <code>resolved config</code>
+          <b>Define deployable semantics</b>
+          <p class="muted">Carries the resolved entry point, required runtime and capabilities, aggregation strategy and inputs, and each member's immutable portable digest.</p>
+        </article>
+        <article>
+          <code>source layers</code>
+          <b>Preserve reviewed authoring inputs</b>
+          <p class="muted">One exact <code>suite.yaml</code> layer and one exact <code>agent.yaml</code> layer per member make inspection and provenance possible without rebuilding from mutable paths.</p>
+        </article>
+      </div>
+
+      <h3 style="margin-top: 26px">How the layout is used</h3>
+      <ol class="steps">
+        <li><b>Package locally — implemented.</b> <code>kmx suite package</code> resolves and validates the graph, writes content-addressed blobs, then writes the manifest and root index.</li>
+        <li><b>Inspect and verify — implemented.</b> <code>kmx suite inspect /path/to/layout</code> rejects unknown JSON fields, wrong media or artifact types, missing blobs, size mismatches, digest mismatches, incomplete config, or a suite annotation that does not match the config digest.</li>
+        <li><b>Push and resolve through a registry — next.</b> Standard OCI tooling can transport the same descriptors and blobs. A mutable tag is only a lookup convenience; lift must pin the returned manifest digest.</li>
+        <li><b>Lift the pinned release — proposed.</b> Kaimahi reads the resolved config, admits each exact member, installs or reuses the matching ActorTemplate, and records a deployment receipt binding suite digest to target resources.</li>
+      </ol>
+
+      <div class="callout good">
+        <b>Identity rule:</b> the suite digest is the sha256 digest of the canonical resolved config.
+        The manifest has its own digest because it also covers the source-layer descriptors and
+        annotations. Both are useful: one identifies suite semantics; the other identifies the
+        complete transport artifact.
+      </div>
+
       <div class="grid-2">
         <article class="card">
-          <h3>Include</h3>
-          <p class="muted">Member digests, entry point, declared relationships, harness descriptors, runtime capability requirements, tool declarations, evaluation definitions, and provenance.</p>
+          <h3>Current POC includes</h3>
+          <p class="muted">The exact suite and agent source bytes, member names and roles, portable digests, model names, entry point, aggregation graph, runtime name, and required capabilities.</p>
         </article>
         <article class="card">
-          <h3>Exclude</h3>
+          <h3>Deliberately excluded</h3>
           <p class="muted">Credentials, cluster-specific secrets, live session UIDs, Actor addresses, mutable runtime history, and model conversations.</p>
         </article>
+      </div>
+      <div class="callout warn">
+        <b>Not yet in the artifact:</b> registry signatures, provenance attestations, semantic version
+        policy, evaluation bundles, harness-image descriptors, ActorTemplate bindings, and deployment
+        receipts. Those are future release and lift contracts, not hidden POC behavior.
       </div>
     </section>
 
@@ -653,30 +913,138 @@ Actors are created lazily when a member first executes.</code></pre>
         member its own event log, fence, compute lifecycle, replay boundary, and Substrate Actor.
       </p>
       <div class="graph">
-        <pre><code>Suite run: run-01K...  ·  suite sha256:aaaa...
+        <svg class="architecture-svg" viewBox="0 0 1120 760" role="img" aria-labelledby="actor-title actor-desc">
+          <title id="actor-title">Agent Suite interaction across Kaimahi, AgentSessions, Substrate Actors, and Ollama</title>
+          <desc id="actor-desc">Kaimahi starts durable purchasing and receiving sessions one at a time. AgentSessions places a separate Substrate Actor for each specialist, journals its model effect and result, checkpoints and suspends the Actor, then passes both durable outputs into a coordinator session and Actor. Ollama is contacted by the AgentSessions host outside the Actor trust boundary.</desc>
+          <defs>
+            <marker id="arrow-actor" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="var(--cp-accent)"></path>
+            </marker>
+            <marker id="arrow-evidence" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="var(--cp-success)"></path>
+            </marker>
+            <marker id="arrow-neutral" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="var(--cp-border-strong)"></path>
+            </marker>
+          </defs>
 
-                   coordinator session
-                   agent sha256:1111...
-                   Actor: invoice-coordinator
-                          |
-                observed hand-off h-01
-                    /               \
-                   v                 v
-       purchasing session       receiving session
-       agent sha256:2222...     agent sha256:3333...
-       Actor: purchasing        Actor: receiving
-             |                        |
-          completed              waiting for input
-                    \             /
-                     result references
-                           |
-                           v
-                 coordinator final turn</code></pre>
+          <rect class="svg-lane" x="15" y="15" width="815" height="115" rx="16"></rect>
+          <text class="svg-title" x="35" y="43">Kaimahi control plane</text>
+          <rect class="svg-box-accent" x="45" y="58" width="270" height="52" rx="10"></rect>
+          <text class="svg-label" x="65" y="82">kmx suite run</text>
+          <text class="svg-muted" x="65" y="101">Pinned suite + member identities · run UID</text>
+          <rect class="svg-box-success" x="555" y="58" width="245" height="52" rx="10"></rect>
+          <text class="svg-label" x="575" y="82">Final answer to stdout</text>
+          <text class="svg-muted" x="575" y="101">Coordinator output only</text>
+
+          <rect class="svg-lane" x="15" y="150" width="815" height="285" rx="16"></rect>
+          <text class="svg-title" x="35" y="179">AgentSessions host · durable journals and lifecycle</text>
+
+          <rect class="svg-box" x="45" y="205" width="225" height="175" rx="10"></rect>
+          <circle class="svg-step" cx="68" cy="229" r="14"></circle>
+          <text class="svg-step-text" x="68" y="233">1</text>
+          <text class="svg-label" x="92" y="234">Purchasing session</text>
+          <text class="svg-code" x="65" y="261">sess-7bf8…</text>
+          <text class="svg-muted" x="65" y="287">Input + model effect + output</text>
+          <text class="svg-muted" x="65" y="309">commit to one ordered journal</text>
+          <rect class="svg-box-success" x="65" y="327" width="185" height="34" rx="8"></rect>
+          <text class="svg-muted" x="82" y="349">checkpoint → suspend → COLD</text>
+
+          <rect class="svg-box" x="305" y="205" width="225" height="175" rx="10"></rect>
+          <circle class="svg-step" cx="328" cy="229" r="14"></circle>
+          <text class="svg-step-text" x="328" y="233">2</text>
+          <text class="svg-label" x="352" y="234">Receiving session</text>
+          <text class="svg-code" x="325" y="261">sess-f691…</text>
+          <text class="svg-muted" x="325" y="287">Input + model effect + output</text>
+          <text class="svg-muted" x="325" y="309">commit to its own journal</text>
+          <rect class="svg-box-success" x="325" y="327" width="185" height="34" rx="8"></rect>
+          <text class="svg-muted" x="342" y="349">checkpoint → suspend → COLD</text>
+
+          <rect class="svg-box-accent" x="565" y="205" width="235" height="175" rx="10"></rect>
+          <circle class="svg-step" cx="588" cy="229" r="14"></circle>
+          <text class="svg-step-text" x="588" y="233">3</text>
+          <text class="svg-label" x="612" y="234">Coordinator session</text>
+          <text class="svg-code" x="585" y="261">sess-671e…</text>
+          <text class="svg-muted" x="585" y="287">Receives two labeled, durable</text>
+          <text class="svg-muted" x="585" y="309">specialist outputs as one turn</text>
+          <rect class="svg-box" x="585" y="327" width="195" height="34" rx="8"></rect>
+          <text class="svg-muted" x="601" y="349">journals final aggregate</text>
+
+          <path class="svg-line-accent" d="M180 110 V195" marker-end="url(#arrow-actor)"></path>
+          <text class="svg-muted" x="190" y="151">create + exec</text>
+          <path class="svg-line-dashed" d="M270 292 H295" marker-end="url(#arrow-neutral)"></path>
+          <text class="svg-muted" x="272" y="281">then</text>
+
+          <path class="svg-line-success" d="M157 380 V402 H682 V390" marker-end="url(#arrow-evidence)"></path>
+          <path class="svg-line-success" d="M417 380 V402 H682"></path>
+          <text class="svg-muted" x="352" y="422">committed outputs become labeled coordinator inputs</text>
+
+          <path class="svg-line-success" d="M682 205 V124 H677 V112" marker-end="url(#arrow-evidence)"></path>
+
+          <rect class="svg-lane" x="15" y="455" width="815" height="275" rx="16"></rect>
+          <text class="svg-title" x="35" y="484">Substrate WorkerPool · one isolated Actor per active member session</text>
+
+          <rect class="svg-box" x="45" y="520" width="225" height="150" rx="10"></rect>
+          <text class="svg-label" x="65" y="548">Purchasing Actor</text>
+          <text class="svg-code" x="65" y="574">UID 86ffb4e3…</text>
+          <text class="svg-muted" x="65" y="600">harnessnode executes turn</text>
+          <text class="svg-muted" x="65" y="621">no Ollama credentials</text>
+          <text class="svg-muted" x="65" y="646">independently suspended</text>
+
+          <rect class="svg-box" x="305" y="520" width="225" height="150" rx="10"></rect>
+          <text class="svg-label" x="325" y="548">Receiving Actor</text>
+          <text class="svg-code" x="325" y="574">UID 80a51368…</text>
+          <text class="svg-muted" x="325" y="600">harnessnode executes turn</text>
+          <text class="svg-muted" x="325" y="621">separate fence + lifecycle</text>
+          <text class="svg-muted" x="325" y="646">independently suspended</text>
+
+          <rect class="svg-box-accent" x="565" y="520" width="235" height="150" rx="10"></rect>
+          <text class="svg-label" x="585" y="548">Coordinator Actor</text>
+          <text class="svg-code" x="585" y="574">UID 6b11d0e8…</text>
+          <text class="svg-muted" x="585" y="600">synthesizes durable evidence</text>
+          <text class="svg-muted" x="585" y="621">without sharing Actor memory</text>
+          <text class="svg-muted" x="585" y="646">with either specialist</text>
+
+          <path class="svg-line" d="M157 380 V510" marker-end="url(#arrow-neutral)"></path>
+          <path class="svg-line" d="M417 380 V510" marker-end="url(#arrow-neutral)"></path>
+          <path class="svg-line-accent" d="M682 380 V510" marker-end="url(#arrow-actor)"></path>
+          <text class="svg-muted" x="68" y="504">place / resume / checkpoint</text>
+          <text class="svg-muted" x="328" y="504">place / resume / checkpoint</text>
+          <text class="svg-muted" x="596" y="504">place / resume</text>
+
+          <path class="svg-boundary" d="M850 15 V730"></path>
+          <text class="svg-label" x="870" y="43">Outside the Actor trust boundary</text>
+          <text class="svg-muted" x="870" y="64">Provider networking and credentials</text>
+          <text class="svg-muted" x="870" y="82">stay host-side</text>
+
+          <rect class="svg-box-warning" x="875" y="205" width="215" height="105" rx="10"></rect>
+          <text class="svg-label" x="895" y="234">AgentSessions model effect</text>
+          <text class="svg-muted" x="895" y="259">journals request and response</text>
+          <text class="svg-muted" x="895" y="281">replay returns committed effect</text>
+
+          <rect class="svg-box" x="875" y="345" width="215" height="88" rx="10"></rect>
+          <text class="svg-label" x="895" y="375">Ollama · qwen3:8b</text>
+          <text class="svg-code" x="895" y="399">/v1/chat/completions</text>
+          <text class="svg-muted" x="895" y="419">3 live calls · 0 replay calls</text>
+
+          <path class="svg-line-accent" d="M157 670 V704 H835 V258 H865" marker-end="url(#arrow-actor)"></path>
+          <path class="svg-line-accent" d="M417 670 V704"></path>
+          <path class="svg-line-accent" d="M682 670 V704"></path>
+          <text class="svg-muted" x="438" y="721">EventSink.Model effect channel</text>
+          <path class="svg-line-accent" d="M982 310 V335" marker-end="url(#arrow-actor)"></path>
+        </svg>
         <div class="legend">
-          <span>Suite membership: declared by OCI release</span>
-          <span>Hand-offs: observed in AgentSessions</span>
-          <span>Actors: managed independently by Substrate</span>
+          <span><i class="legend-dot accent"></i> Control and model-effect flow</span>
+          <span><i class="legend-dot success"></i> Durable evidence and final output</span>
+          <span><i class="legend-dot"></i> Session-to-Actor lifecycle</span>
+          <span><i class="legend-dot warning"></i> Actor/provider trust boundary</span>
         </div>
+      </div>
+      <div class="callout">
+        <b>The important interaction is session-to-Actor, not Actor-to-Actor.</b> The purchasing,
+        receiving, and coordinator Actors never call each other directly. Kaimahi drives the current
+        POC sequence through AgentSessions; committed specialist outputs cross the boundary as typed,
+        labeled inputs to the coordinator's durable session.
       </div>
 
       <h3 style="margin-top: 26px">Session metadata binding</h3>
