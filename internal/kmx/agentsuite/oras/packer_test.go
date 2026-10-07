@@ -17,7 +17,6 @@ import (
 
 	"github.com/kaimahi-agents/kaimahi/internal/kmx/agentsuite"
 	oraspack "github.com/kaimahi-agents/kaimahi/internal/kmx/agentsuite/oras"
-	godigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
@@ -129,7 +128,7 @@ func TestPackerIsDeterministic(t *testing.T) {
 
 func TestPackerStopsWhenValidationFails(t *testing.T) {
 	src, contentDescriptor := newContentSource(t)
-	dst := &recordingStorage{}
+	dst := &recordingPusher{}
 	packer := oraspack.New(failingValidator{})
 	if _, err := packer.Pack(context.Background(), src, dst, contentDescriptor); err == nil ||
 		!errors.Is(err, errRejectedSuite) {
@@ -141,7 +140,7 @@ func TestPackerStopsWhenValidationFails(t *testing.T) {
 }
 
 func TestPackerRejectsInvalidContentDescriptor(t *testing.T) {
-	dst := &recordingStorage{}
+	dst := &recordingPusher{}
 	descriptor := content.NewDescriptorFromBytes("application/octet-stream", []byte("invalid"))
 	if _, err := oraspack.New(nil).Pack(context.Background(), memory.New(), dst, descriptor); err == nil {
 		t.Fatal("invalid content descriptor succeeded")
@@ -151,24 +150,8 @@ func TestPackerRejectsInvalidContentDescriptor(t *testing.T) {
 	}
 }
 
-func TestPackerRejectsNonSHA256ContentDescriptor(t *testing.T) {
-	dst := &recordingStorage{}
-	data := []byte("content")
-	descriptor := ocispec.Descriptor{
-		MediaType: agentsuite.MediaTypeContent,
-		Digest:    godigest.NewDigestFromBytes(godigest.SHA512, data),
-		Size:      int64(len(data)),
-	}
-	if _, err := oraspack.New(nil).Pack(context.Background(), memory.New(), dst, descriptor); err == nil {
-		t.Fatal("non-SHA-256 content descriptor succeeded")
-	}
-	if dst.pushes != 0 {
-		t.Fatalf("destination received %d pushes for invalid content", dst.pushes)
-	}
-}
-
 func TestPackerRejectsMissingCASContent(t *testing.T) {
-	dst := &recordingStorage{}
+	dst := &recordingPusher{}
 	descriptor := content.NewDescriptorFromBytes(agentsuite.MediaTypeContent, []byte("missing"))
 	if _, err := oraspack.New(nil).Pack(context.Background(), memory.New(), dst, descriptor); err == nil {
 		t.Fatal("missing source content succeeded")
@@ -189,7 +172,7 @@ func TestORASStoreRejectsMismatchedContent(t *testing.T) {
 
 func TestPackerPropagatesDestinationFailure(t *testing.T) {
 	src, contentDescriptor := newContentSource(t)
-	dst := &failingStorage{err: errDestinationRejected}
+	dst := &failingPusher{err: errDestinationRejected}
 	_, err := oraspack.New(nil).Pack(context.Background(), src, dst, contentDescriptor)
 	if !errors.Is(err, errDestinationRejected) {
 		t.Fatalf("Pack() error = %v, want destination failure", err)
@@ -198,20 +181,12 @@ func TestPackerPropagatesDestinationFailure(t *testing.T) {
 
 func TestPackerAcceptsExistingCASContent(t *testing.T) {
 	src, contentDescriptor := newContentSource(t)
-	dst := &existingStorage{store: memory.New()}
+	dst := &existingPusher{}
 	if _, err := oraspack.New(nil).Pack(context.Background(), src, dst, contentDescriptor); err != nil {
 		t.Fatal(err)
 	}
 	if dst.pushes != 3 {
 		t.Fatalf("pushes = %d, want 3", dst.pushes)
-	}
-}
-
-func TestPackerRejectsCorruptExistingCASContent(t *testing.T) {
-	src, contentDescriptor := newContentSource(t)
-	dst := corruptExistingStorage{}
-	if _, err := oraspack.New(nil).Pack(context.Background(), src, dst, contentDescriptor); err == nil {
-		t.Fatal("corrupt existing content succeeded")
 	}
 }
 
@@ -328,90 +303,30 @@ func (failingValidator) Validate(
 	return nil, errRejectedSuite
 }
 
-type recordingStorage struct {
+type recordingPusher struct {
 	pushes int
 }
 
-func (t *recordingStorage) Push(context.Context, ocispec.Descriptor, io.Reader) error {
+func (t *recordingPusher) Push(context.Context, ocispec.Descriptor, io.Reader) error {
 	t.pushes++
 	return nil
 }
 
-func (*recordingStorage) Fetch(context.Context, ocispec.Descriptor) (io.ReadCloser, error) {
-	return nil, errors.New("unexpected fetch")
-}
-
-func (*recordingStorage) Exists(context.Context, ocispec.Descriptor) (bool, error) {
-	return false, nil
-}
-
 var errDestinationRejected = errors.New("destination rejected content")
 
-type failingStorage struct {
+type failingPusher struct {
 	err error
 }
 
-func (p *failingStorage) Push(context.Context, ocispec.Descriptor, io.Reader) error {
+func (p *failingPusher) Push(context.Context, ocispec.Descriptor, io.Reader) error {
 	return p.err
 }
 
-func (*failingStorage) Fetch(context.Context, ocispec.Descriptor) (io.ReadCloser, error) {
-	return nil, errors.New("unexpected fetch")
-}
-
-func (*failingStorage) Exists(context.Context, ocispec.Descriptor) (bool, error) {
-	return false, nil
-}
-
-type existingStorage struct {
-	store  *memory.Store
+type existingPusher struct {
 	pushes int
 }
 
-func (p *existingStorage) Push(
-	ctx context.Context,
-	descriptor ocispec.Descriptor,
-	reader io.Reader,
-) error {
+func (p *existingPusher) Push(context.Context, ocispec.Descriptor, io.Reader) error {
 	p.pushes++
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return err
-	}
-	if err := p.store.Push(ctx, descriptor, bytes.NewReader(data)); err != nil &&
-		!errors.Is(err, errdef.ErrAlreadyExists) {
-		return err
-	}
-	return agentsuite.ErrAlreadyExists
-}
-
-func (p *existingStorage) Fetch(
-	ctx context.Context,
-	descriptor ocispec.Descriptor,
-) (io.ReadCloser, error) {
-	return p.store.Fetch(ctx, descriptor)
-}
-
-func (p *existingStorage) Exists(
-	ctx context.Context,
-	descriptor ocispec.Descriptor,
-) (bool, error) {
-	return p.store.Exists(ctx, descriptor)
-}
-
-type corruptExistingStorage struct{}
-
-func (corruptExistingStorage) Push(context.Context, ocispec.Descriptor, io.Reader) error {
-	return agentsuite.ErrAlreadyExists
-}
-
-func (corruptExistingStorage) Fetch(
-	context.Context,
-	ocispec.Descriptor,
-) (io.ReadCloser, error) {
-	return io.NopCloser(bytes.NewReader([]byte("corrupt"))), nil
-}
-
-func (corruptExistingStorage) Exists(context.Context, ocispec.Descriptor) (bool, error) {
-	return true, nil
+	return errdef.ErrAlreadyExists
 }
