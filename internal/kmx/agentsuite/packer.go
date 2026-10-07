@@ -57,22 +57,12 @@ func (p *Packer) Pack(ctx context.Context, target Target, source string) (Descri
 	if target == nil {
 		return Descriptor{}, errors.New("AgentSuite pack target is required")
 	}
+	if p == nil || p.validator == nil {
+		return Descriptor{}, errors.New("AgentSuite pack validator is required")
+	}
 	if err := ctx.Err(); err != nil {
 		return Descriptor{}, err
 	}
-	report, err := p.validator.ValidatePath(source)
-	if err != nil {
-		return Descriptor{}, fmt.Errorf("validate AgentSuite source: %w", err)
-	}
-	if report == nil {
-		return Descriptor{}, errors.New("validate AgentSuite source: validator returned no report")
-	}
-	if _, err := os.Stat(filepath.Join(source, "oci-layout")); err == nil {
-		return Descriptor{}, errors.New("AgentSuite pack source must be an extracted content directory")
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return Descriptor{}, fmt.Errorf("inspect AgentSuite source: %w", err)
-	}
-
 	layer, layerDescriptor, err := packContentLayer(ctx, source)
 	if err != nil {
 		return Descriptor{}, err
@@ -82,32 +72,70 @@ func (p *Packer) Pack(ctx context.Context, target Target, source string) (Descri
 		os.Remove(layer.Name())
 	}()
 
-	configDescriptor := descriptorFromBytes(MediaTypeEmptyConfig, emptyConfigBytes)
-	if err := target.Push(ctx, configDescriptor, bytes.NewReader(emptyConfigBytes)); err != nil {
-		return Descriptor{}, fmt.Errorf("push AgentSuite config: %w", err)
-	}
-	if err := target.Push(ctx, layerDescriptor, layer); err != nil {
-		return Descriptor{}, fmt.Errorf("push AgentSuite content: %w", err)
-	}
-
 	manifestBytes, err := json.Marshal(ociManifest{
 		SchemaVersion: 2,
 		MediaType:     ociManifestMediaType,
 		ArtifactType:  MediaTypeArtifact,
-		Config:        toOCIDescriptor(configDescriptor),
+		Config:        toOCIDescriptor(descriptorFromBytes(MediaTypeEmptyConfig, emptyConfigBytes)),
 		Layers:        []ociDescriptor{toOCIDescriptor(layerDescriptor)},
 	})
 	if err != nil {
 		return Descriptor{}, fmt.Errorf("encode AgentSuite OCI manifest: %w", err)
 	}
+	configDescriptor := descriptorFromBytes(MediaTypeEmptyConfig, emptyConfigBytes)
 	manifestDescriptor := descriptorFromBytes(ociManifestMediaType, manifestBytes)
-	if err := target.Push(ctx, manifestDescriptor, bytes.NewReader(manifestBytes)); err != nil {
-		return Descriptor{}, fmt.Errorf("push AgentSuite manifest: %w", err)
+
+	stageRoot, err := os.MkdirTemp("", "agentsuite-layout-*")
+	if err != nil {
+		return Descriptor{}, err
 	}
-	if err := target.Tag(ctx, manifestDescriptor, report.Name); err != nil {
-		return Descriptor{}, fmt.Errorf("tag AgentSuite manifest: %w", err)
+	defer os.RemoveAll(stageRoot)
+	stage, err := NewOCILayoutTarget(stageRoot)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	if err := pushPackedArtifact(ctx, stage, layer, configDescriptor, layerDescriptor, manifestDescriptor, manifestBytes, ""); err != nil {
+		return Descriptor{}, fmt.Errorf("stage AgentSuite artifact: %w", err)
+	}
+	report, err := p.validator.ValidatePath(stageRoot)
+	if err != nil {
+		return Descriptor{}, fmt.Errorf("validate packed AgentSuite: %w", err)
+	}
+	if report == nil {
+		return Descriptor{}, errors.New("validate packed AgentSuite: validator returned no report")
+	}
+	if err := pushPackedArtifact(ctx, target, layer, configDescriptor, layerDescriptor, manifestDescriptor, manifestBytes, report.Name); err != nil {
+		return Descriptor{}, err
 	}
 	return manifestDescriptor, nil
+}
+
+func pushPackedArtifact(
+	ctx context.Context,
+	target Target,
+	layer *os.File,
+	configDescriptor Descriptor,
+	layerDescriptor Descriptor,
+	manifestDescriptor Descriptor,
+	manifestBytes []byte,
+	reference string,
+) error {
+	if err := target.Push(ctx, configDescriptor, bytes.NewReader(emptyConfigBytes)); err != nil {
+		return fmt.Errorf("push AgentSuite config: %w", err)
+	}
+	if _, err := layer.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	if err := target.Push(ctx, layerDescriptor, layer); err != nil {
+		return fmt.Errorf("push AgentSuite content: %w", err)
+	}
+	if err := target.Push(ctx, manifestDescriptor, bytes.NewReader(manifestBytes)); err != nil {
+		return fmt.Errorf("push AgentSuite manifest: %w", err)
+	}
+	if err := target.Tag(ctx, manifestDescriptor, reference); err != nil {
+		return fmt.Errorf("tag AgentSuite manifest: %w", err)
+	}
+	return nil
 }
 
 func packContentLayer(ctx context.Context, source string) (*os.File, Descriptor, error) {

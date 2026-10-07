@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -25,6 +26,9 @@ func TestPackerProducesValidOCILayout(t *testing.T) {
 	}
 	if validator.calls != 1 {
 		t.Fatalf("validator calls = %d, want 1", validator.calls)
+	}
+	if !validator.validatedLayout {
+		t.Fatal("validator did not receive the staged OCI layout")
 	}
 	if descriptor.MediaType != ociManifestMediaType || !validDigest(descriptor.Digest) || descriptor.Size <= 0 {
 		t.Fatalf("invalid manifest descriptor: %+v", descriptor)
@@ -61,7 +65,7 @@ func TestPackerIsDeterministic(t *testing.T) {
 func TestPackerStopsWhenValidationFails(t *testing.T) {
 	target := &recordingTarget{}
 	packer := NewPacker(failingValidator{})
-	if _, err := packer.Pack(context.Background(), target, "unused"); err == nil ||
+	if _, err := packer.Pack(context.Background(), target, filepath.Join("testdata", "minimal")); err == nil ||
 		!errors.Is(err, errRejectedSuite) {
 		t.Fatalf("Pack() error = %v, want validation failure", err)
 	}
@@ -107,12 +111,16 @@ func TestPackerRejectsOCILayoutAsSource(t *testing.T) {
 }
 
 type recordingValidator struct {
-	delegate IValidator
-	calls    int
+	delegate        IValidator
+	calls           int
+	validatedLayout bool
 }
 
 func (v *recordingValidator) ValidatePath(path string) (*Report, error) {
 	v.calls++
+	if _, err := os.Stat(filepath.Join(path, "oci-layout")); err == nil {
+		v.validatedLayout = true
+	}
 	return v.delegate.ValidatePath(path)
 }
 
