@@ -2,6 +2,13 @@
 
 Status: proposed internal contracts, not an implemented deployment workflow.
 
+Sequencing: this is a **post-#339 integration proposal**. Land and reconcile
+#339's builder contracts first, then adapt its output into this deployment
+handoff. This branch is based on main, not stacked on #339, and does not include
+or replace that PR's builder implementation. #339's schema changes are not
+prerequisites for reviewing these interfaces; concrete integration must track
+the final merged #339 shape.
+
 ## Decision
 
 Use one suite lifecycle above runtime-specific deployment adapters. Both local
@@ -28,6 +35,11 @@ metadata publication, CLI commands or console actions. Its Go values are
 in-process contracts, not a stable persistence format. No new CRD is required.
 
 ## Handoff to the image builder
+
+This PR does not change `agentsuite.Suite`, `agentsuite.BuildProfile`, or their
+JSON Schemas. The `Suite` and `Execution` types here are internal proposed
+handoff values. A later coordinated schema change must define how a build
+profile selects an execution contract and how a built image carries it.
 
 #339's `SandboxPlan` and `SandboxBuilder` remain the starting implementation.
 The proposed `BuildOutput` extends its archive result with:
