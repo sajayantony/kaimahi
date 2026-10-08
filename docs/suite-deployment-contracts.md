@@ -39,7 +39,10 @@ in-process contracts, not a stable persistence format. No new CRD is required.
 This PR does not change `agentsuite.Suite`, `agentsuite.BuildProfile`, or their
 JSON Schemas. The `Suite` and `Execution` types here are internal proposed
 handoff values. A later coordinated schema change must define how a build
-profile selects an execution contract and how a built image carries it.
+profile selects an execution contract and how a built image carries it. The
+[proposed AgentSuite extensions](#proposed-agentsuite-extensions-after-339) below
+specify that work for review; their JSON examples are not accepted wire formats
+in the current validator.
 
 #339's `SandboxPlan` and `SandboxBuilder` remain the starting implementation.
 The proposed `BuildOutput` extends its archive result with:
@@ -67,6 +70,225 @@ AgentSuite wire format. Experimental #339 images are not automatically accepted
 as conformant; completing and qualifying its output remains an integration gate.
 Image-to-suite verification, descriptor bytes and execution metadata must be
 validated by the resolver/builder integration, not inferred from these Go structs.
+
+## Proposed AgentSuite extensions after #339
+
+The five extensions below form one build-to-deployment chain:
+
+```text
+Suite S -> composition C -> build profile P -> execution contract E
+                    | build
+                    v
+Image I -> existing sandbox binding -> S, C, P and E
+
+Separate member-image association A -> S + [(agent, platform, P) -> C, E, I]
+                    | select and verify
+                    v
+Lift plan -> selected mode + typed inputs + installed runtime capabilities
+```
+
+Names, media types and paths below are proposed. These are portable artifact
+contracts; cluster/context names, installed runtime versions, credential values
+and deployment receipts remain outside the suite.
+
+### 1. Execution-contract schema and build-profile reference
+
+**Proposed contract:** introduce a closed `execution-contract.schema.json` record
+with its own schema version and media type. A build profile selects it by a
+suite-relative path and canonical digest, following existing manifest-reference
+conventions. Require it for deployable image builds; profiles without it remain
+valid definition/build inputs but do not establish deployable compatibility.
+
+Illustrative build-profile fragment:
+
+```json
+{
+  "id": "service-profile",
+  "execution": {
+    "path": "execution/service-v1.json",
+    "digest": "sha256:<execution-contract-digest>"
+  }
+}
+```
+
+The referenced contract declares:
+
+- its versioned semantics and harness/configuration ABI;
+- named supported invocation modes with exact protocol revisions;
+- each mode's lifecycle (service or session), activation mechanism, readiness
+  and termination semantics, and result/cancellation interface;
+- typed, mode-scoped runtime input slots and delivery mechanisms;
+- required behavioral capabilities and filesystem/network requirements.
+
+Reference established protocol/ABI specifications rather than duplicating their
+wire protocols. Image OS/architecture, agent-serving protocol, in-image framework
+and inference protocol remain separate fields. A mode selector is a controlled
+contract input, not permission to override arbitrary process environment.
+
+Validation must reject unresolved paths, stale digests, unknown required semantics,
+duplicate mode/input names and references to undeclared modes. The selected
+harness must implement every advertised mode; builders must not claim support
+merely because the source record lists it.
+
+**Open questions:** inline versus referenced execution records; which protocol
+profiles to qualify first; whether readiness and process controls belong directly
+in this schema or in referenced harness profiles; exact version/media-type names.
+
+### 2. Linkage through the existing sandbox binding
+
+**Proposed contract:** extend the existing Agent sandbox binding with an
+`execution` descriptor, and add an exact build-profile descriptor alongside its
+identifier. Preserve `suiteDigest`, agent, platform, composition and inventory
+linkage. This uses the existing binding file and digest-label mechanism, not a
+second deployment-specific image identity.
+
+Proposed additional binding fields:
+
+```json
+{
+  "buildProfile": "service-profile",
+  "buildProfileDescriptor": {
+    "mediaType": "application/vnd.agentsuite.build.profile.v1+json",
+    "digest": "sha256:<profile-digest>",
+    "size": 1234
+  },
+  "execution": {
+    "mediaType": "application/vnd.agentsuite.execution.contract.v1+json",
+    "digest": "sha256:<execution-contract-digest>",
+    "size": 512
+  }
+}
+```
+
+For these JSON descriptors, digest and size should cover canonical JCS UTF-8
+bytes. This requires an explicit common descriptor-byte rule for the existing
+composition/binding records too. OCI image descriptors continue to cover exact
+registry bytes; the two digest domains are not interchangeable.
+
+Embed the selected execution record unchanged in canonical form, for example at
+`/.agentsuite/execution.json`. Image verification compares its descriptor with
+the binding, the suite's profile reference and the selected composition. The
+binding label must match the binding bytes, and image platform metadata must
+agree. Include execution content in the final inventory; define exclusions for
+inventory/binding self-reference with #307.
+
+Matching descriptors establish consistency, not authenticity or proof of runtime
+enforcement. Signed build provenance and qualification remain separate evidence.
+
+**Open questions:** whether the profile descriptor is necessary given the suite
+back-reference; final embedded path; migration/versioning of the binding schema;
+whether attached metadata may substitute for embedded bytes and under which rules.
+
+### 3. Separate member-image association record
+
+**Proposed contract:** a versioned, immutable build-output record identifies one
+source suite OCI descriptor and maps exact selections to runnable image
+descriptors. It is published after image construction, outside the source suite.
+
+```text
+MemberImageAssociation
+  schemaVersion / mediaType
+  suite: OCI descriptor
+  members[]:
+    agent
+    platform
+    buildProfile: identifier + descriptor
+    composition: descriptor
+    execution: descriptor
+    image: OCI platform-manifest descriptor
+    sandboxBinding: descriptor
+```
+
+The association must not change the source suite already embedded in its images.
+Its descriptor is recorded in the deployment plan/receipt. Retrieval hints may
+identify repositories, but authoritative selection uses descriptors, never tags.
+An index output must resolve to one exact platform image before deployment.
+
+Reject duplicate selection keys, foreign suite/member references, missing blobs,
+incorrect media types and mismatched image back-bindings. An association may
+publish partial build results, but a full-suite lift must find exactly one
+qualified image for every requested image-backed member. It must not silently
+deploy only the available subset or select the newest of conflicting results.
+
+An OCI referrer is a discovery candidate, not automatically an authoritative or
+trusted result. Resolve and pin one association before planning; define explicit
+selection/trust policy when several referrers match. Registry copy must preserve
+the association and required image graph, not assume referrers are copied by a
+plain suite-manifest copy.
+
+**Open questions:** one suite-wide association versus per-build records; referrer
+discovery versus an explicit association reference; signing/trust requirements;
+repository relocation and copy behavior; how native members are represented.
+
+### 4. Typed runtime inputs and compatibility rules
+
+**Proposed contract:** replace opaque input names with typed slots whose semantics
+are explicit. Each slot declares name, purpose, value schema, required/default
+behavior, applicable modes, delivery (environment/file/protocol configuration)
+and whether it accepts a value or a credential reference.
+
+Examples of purposes are inference endpoint, inference credential, agent endpoint
+authentication and ToolProvider connection. A credential slot accepts a reference
+at deployment; it never places the credential value in a suite, image, plan or
+receipt. Non-secret value schemas can constrain URL schemes, enums and ranges.
+Defaults must be explicit immutable contract content, not host-derived values.
+
+Fixed build settings should be identified separately from bindable inputs. In
+particular, #339's fixed model base URL cannot be rebound until the harness
+supports it. Instructions, model requirements, Tool grants and invocation edges
+remain behavior-defining suite content rather than arbitrary environment overrides.
+
+Planning validates every required slot for the selected mode, rejects unknown or
+unused bindings, validates value types, and checks collisions in environment/file
+delivery. The adapter checks the installation's exact execution schema, harness
+ABI, supported protocol/lifecycle combination, platform and required capabilities.
+Compatibility is a supported combination, not the cross-product of unrelated
+lists. Recheck the installation and binding identities before deployment.
+
+**Open questions:** shared vocabulary for input purposes; JSON Schema subset and
+external-reference policy; per-mode versus shared slots; credential rotation and
+binding identity; where an adapter's version-qualified compatibility evidence lives.
+
+### 5. Multiple profiles per agent/platform
+
+**Proposed decision for review: support multiple explicit build profiles for the
+same agent/platform, keyed by `(agent, platform, buildProfile)`.** This lets one
+suite carry different harness implementations or execution contracts for the same
+OS/architecture without overloading OCI platform fields.
+
+This requires coordinated updates to composition references, validator indexes,
+build selection, association keys and diagnostics. A digest-bound composition
+still identifies one exact result. Build and lift may omit the profile only when
+exactly one candidate remains after explicit requirements and compatibility
+filtering. Ambiguity is an error; array order, profile names, runtime brand guesses
+and silent rebuilds are not selection policies. Record the chosen profile and
+composition descriptors in the final plan.
+
+This differs from #326's proposed one-composition-per-agent/platform rule and
+from current validator indexing. If that narrower rule is retained, different
+profile builds must instead be published as separate suites, and the APIs must
+say so. Neither behavior should be implied by the current schema accidentally.
+
+**Open questions:** accept the explicit triple-key proposal or retain the narrower
+rule; whether a suite may declare a default profile; whether compatibility-only
+selection is sufficient or deployment environments must always name a profile.
+
+### Contract implementation checklist
+
+| Extension | Proposed Go contract impact | Still needed after this draft |
+|---|---|---|
+| Execution record | `Execution`, `Mode`, `Input`; build-profile reference resolved by `Builder` | Closed schema, typed delivery/mode activation, profile field and semantic validation |
+| Sandbox binding | `BuildOutput.Binding`, `BuildProfile`, `ExecutionDescriptor` | Binding schema extension, canonical descriptor-byte rules, builder emission and image verification |
+| Member-image association | Collection of `BuildOutput` selections tied to one suite | Association record/schema, resolver/publisher, plan and receipt association identity |
+| Typed inputs and compatibility | `TargetBinding`, `Installation`, `Selection` | Typed slot checking, qualified compatibility combinations and pre-deploy revalidation |
+| Profile selection | Exact profile/composition descriptors in build requests/results | Triple-key graph references/indexes, explicit selectors and ambiguity tests |
+
+The current Go draft only implements basic selection, descriptor-shape and
+list-based compatibility checks. It does not implement these wire schemas,
+input-schema evaluation, full graph verification or association discovery. After
+decisions land, add round-trip fixtures, stale binding/digest tests, missing-member
+tests, multi-mode compatibility tests and multiple-profile ambiguity tests, then
+prove one real builder-to-adapter handoff on kind and AKS.
 
 ## Suite and implementation selection
 
@@ -145,6 +367,8 @@ The original standalone HTTP-image experiment is separate from this proposal.
 
 ## Review decisions
 
+- Review the five proposed AgentSuite extensions above, especially the binding
+  linkage, association discovery and explicit multiple-profile decision.
 - Should execution metadata be embedded alongside the sandbox binding or exposed
   by a defined OCI attachment, and which component verifies the association?
 - What concrete harness/mode combinations will the first two adapters qualify?
