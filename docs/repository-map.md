@@ -51,8 +51,8 @@ checks.
 
 ## `internal/` — packages in the CLI
 
-`internal/kmx/` is eighteen packages at the top level (twenty Go packages
-including nested `runview/orka` and `agentsuite/oras`). The short version counts top-level directories.
+`internal/kmx/` is eighteen packages at the top level (twenty-one Go packages
+including nested `runview/orka`, `agentsuite/agentkit` and `agentsuite/oras`). The short version counts top-level directories.
 Cluster-independent decisions live in packages; shell-out orchestration lives in `app`. `lift` holds cloud-independent
 rules, while the seven `lift*.go` files in `app` run cloud orchestration, preferences and reuse checks. Interactive lift panes use `chat_lift*.go`. Counts exclude
 Go test files but include non-Go data. The test-only kubectl executable under
@@ -61,8 +61,9 @@ Go test files but include non-Go data. The test-only kubectl executable under
 | Package or data directory | Non-test files | Class | What it is |
 |---|---|---|---|
 | `kmx/app` | 100 | Installed | Command orchestration, the offline AgentSuite validator entry point, the read-only Orka run source and console run view, the Orka lifecycle adapter, exact Kagent v0.10.2 create-only lifecycle adapter and online proof, agent bundle persistence, Orka lift/status/evaluation gates, safe retirement, Task execution and result retrieval, interactive Orka console, shared chat UI, host inference and native platform operations. The three Kagent non-test files are `create_kagent.go`, `kagent_create_online.go` and `runtime_kagent_lifecycle.go`; app also contains Kagent create and Orka-only bundle-refusal tests. |
-| `kmx/agentsuite` | 10 | Installed | Strict JSON and JCS identities, OCI image-layout and content-layer validation, closed agent/tool-provider/composition/build-profile graph validation, callable Tool contracts, sandbox binding validation, and provider-neutral packing, CAS, and artifact push/pull contracts. |
 | `kmx/suitedeploy` | 2 | Scaffolding | Proposed internal full-suite resolver, build-output, execution, target-binding and deployment-adapter contracts, with immutable plan and gate matching tests; not wired into installed workflows. |
+| `kmx/agentsuite` | 11 | Installed | Strict JSON and JCS identities, OCI image-layout and content-layer validation, closed agent/tool-provider/composition/build-profile graph validation, callable Tool contracts, sandbox binding validation, provider-neutral sandbox build planning, and provider-neutral packing, CAS, and artifact push/pull contracts. |
+| `kmx/agentsuite/agentkit` | 3 | Installed | Experimental AgentKit adapter for the provider-neutral sandbox builder contract; uses AgentKit's Go packages to convert the selected agent and monolithic harness adapter into LLB plus OCI image configuration, manages a digest-pinned local BuildKit daemon when no endpoint override is supplied, and emits an OCI image-layout tar while explicitly reporting that the runtime base is not composed. |
 | `kmx/agentsuite/oras` | 6 | Installed | ORAS-backed deterministic directory push, validated directory extraction, manifest construction, validation materialization, target-bound artifact push/pull, and remote repository binding through the Docker credential store; registry configuration, authentication, and transport policy remain outside the portable AgentSuite contracts. |
 | `kmx/agentsuite/schema` | 7 | Checkout | Closed JSON Schema 2020-12 reference documents for suite, agent, ToolProvider and provider composition, build-profile, and Agent sandbox-binding records; published with the source checkout, not embedded in or loaded by the binary. |
 | `kmx/agentsuite/testdata/minimal` | 1 | Scaffolding | Root manifest for the checked-in minimal conformant AgentSuite layout used by package and CLI validation tests. |
@@ -77,6 +78,12 @@ Go test files but include non-Go data. The test-only kubectl executable under
 | `kmx/agentsuite/testdata/coordinator-workers/instructions` | 3 | Scaffolding | Digest-bound coordinator, writer and reviewer instructions. |
 | `kmx/agentsuite/testdata/coordinator-workers/compositions` | 3 | Scaffolding | Empty composition manifests for all three agents on Linux amd64. |
 | `kmx/agentsuite/testdata/coordinator-workers/tool-providers` | 1 | Scaffolding | Empty closed tool provider catalog for the coordinator-workers suite. |
+| `kmx/agentsuite/testdata/incident-analyst` | 1 | Scaffolding | Root manifest for the realistic, buildable incident-response example with real digest-pinned Linux amd64 image inputs. |
+| `kmx/agentsuite/testdata/incident-analyst/agents` | 1 | Scaffolding | Tool-free incident analyst targeting an Azure OpenAI deployment named gpt-5-mini. |
+| `kmx/agentsuite/testdata/incident-analyst/build-profiles` | 1 | Scaffolding | Real digest-pinned Python runtime-base and AgentKit v0.1.0 Pydantic AI harness descriptors. |
+| `kmx/agentsuite/testdata/incident-analyst/instructions` | 1 | Scaffolding | Evidence-bound incident triage, hypothesis, diagnostic and mitigation instructions. |
+| `kmx/agentsuite/testdata/incident-analyst/compositions` | 1 | Scaffolding | Linux amd64 composition selecting the AgentKit v0.1.0 build profile. |
+| `kmx/agentsuite/testdata/incident-analyst/tool-providers` | 1 | Scaffolding | Empty catalog reflecting the experimental backend's current no-ToolProvider boundary. |
 | `kmx/agentsuite/testdata/tool-providers` | 4 | Scaffolding | `kubectl` and Azure CLI ToolProvider manifests plus the OPA provider and provider composition examples. |
 | `kmx/agentsuite/testdata/remote-mcp` | 1 | Scaffolding | Remote Streamable HTTP ToolProvider manifest used by schema and semantic validation tests. |
 | `kmx/agentsuite/testdata/remote-mcp/schemas` | 2 | Scaffolding | Digest-bound input and output schemas for the remote provider's callable Tool. |
@@ -282,11 +289,7 @@ throwaway CA and a documentation-range address routed over kind's network,
 so a public-looking hosted upstream can be dialed without a hosted account.
 CI holds no hosted credential.
 
-<<<<<<< HEAD
-## `docs/` — 50 tracked files, guides and retirement records
-=======
-## `docs/` — 48 tracked files, guides and retirement records
->>>>>>> ad4608f (docs(architecture): propose internal suite deployment contracts)
+## `docs/` — 51 tracked files, guides and retirement records
 
 **Guides and index (24):** `README.md`, `getting-started.md`, `kmx.md`,
 `aks.md`, `models.md`, `spend.md`,
