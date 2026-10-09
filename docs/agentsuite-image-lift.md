@@ -67,11 +67,14 @@ The local kind mode preloads the exact image digest because the workstation's
 localhost registry is not the node's localhost; this does not prove remote
 registry image-pull identity.
 
-Local proof completed: suite generation/validation, registry push, real pinned
+Local and remote proof completed: suite generation/validation, registry push, real pinned
 AgentKit/BuildKit build, image publication, suite plan, Deployment/Service
 creation, authenticated response through the controlled model, and repeated lift
-with preserved UIDs. This establishes standalone HTTP execution, not a native
-agent-runtime registration, external-model evaluation, or AKS qualification.
+with preserved UIDs. The remote run pulled the private image from ACR on AKS
+using registry-scoped kubelet `AcrPull` access, without local image preloading.
+Both runs used the same smoke runner and adapter with different target bindings.
+This establishes standalone HTTP execution on the tested targets, not native
+agent-runtime registration, external-model evaluation, or general runtime parity.
 
 ## Target architecture: full-suite adapter deployment
 

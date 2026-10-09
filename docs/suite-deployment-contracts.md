@@ -1,13 +1,29 @@
 # Full-suite deployment contracts
 
-Status: proposed internal contracts, not an implemented deployment workflow.
+Status: internal contract proposal with an experimental image-build and suite-lift
+implementation. See [the executable workflow](agentsuite-image-lift.md).
 
-Sequencing: this is a **post-#339 integration proposal**. Land and reconcile
-#339's builder contracts first, then adapt its output into this deployment
-handoff. This branch is based on main, not stacked on #339, and does not include
-or replace that PR's builder implementation. #339's schema changes are not
-prerequisites for reviewing these interfaces; concrete integration must track
-the final merged #339 shape.
+Sequencing: this branch includes #339 at `3db1583` plus current main's lifecycle
+contracts. Until #339 merges, its builder commits are included in the PR diff.
+The implementation uses a narrow inline execution profile and experimental image
+declaration; the five broader extensions below remain proposed follow-up design.
+
+## Implemented scope
+
+- `suite build --suite-ref` verifies the published source and emits image metadata.
+- `suite push-image` publishes the built OCI archive as a runnable image.
+- `lift <suite-reference> --environment <file>` resolves every member image,
+  prepares and inspects the complete suite, and deploys through the standalone
+  Kubernetes HTTP adapter on kind or AKS. Single-image input is also supported.
+- A reproducible live smoke verifies an authenticated response and repeated
+  deployment preserving resource UIDs. It passed on kind and private ACR/AKS.
+
+The richer `suitedeploy` contracts in this document remain review scaffolding;
+the working orchestration is `runtime.SuiteDeploymentAdapter` plus `imagelift`.
+Reconciliation of these with the merged lifecycle APIs remains open. The working
+path does not implement native agent-platform registration, ToolProviders,
+delegation, persistent release history or evaluation promotion gates. It must not
+be used as a substitute for a governed bundle promotion workflow.
 
 ## Decision
 
@@ -36,10 +52,10 @@ in-process contracts, not a stable persistence format. No new CRD is required.
 
 ## Handoff to the image builder
 
-This PR does not change `agentsuite.Suite`, `agentsuite.BuildProfile`, or their
-JSON Schemas. The `Suite` and `Execution` types here are internal proposed
-handoff values. A later coordinated schema change must define how a build
-profile selects an execution contract and how a built image carries it. The
+The executable prototype adds optional inline `BuildProfile.execution` and
+closed execution/image-deployment schemas. `agentsuite.Suite` remains unchanged.
+The `suitedeploy.Suite` and `Execution` types here are richer proposed handoff
+values, not the prototype's wire schema. The
 [proposed AgentSuite extensions](#proposed-agentsuite-extensions-after-339) below
 specify that work for review; their JSON examples are not accepted wire formats
 in the current validator.
@@ -363,7 +379,8 @@ Retirement/reclamation APIs and durable operation recovery are follow-ups.
 
 This follows #326's internal-first maturity direction. There is no exact public
 interface-count commitment, and existing `agent.yaml` workflows remain intact.
-The original standalone HTTP-image experiment is separate from this proposal.
+The executable standalone HTTP-image path is included in this branch; its narrow
+contracts are documented separately from the broader proposals here.
 
 ## Review decisions
 
