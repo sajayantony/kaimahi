@@ -1,0 +1,12 @@
+{
+  "gateways": {"default": {"port": 3000}},
+  "routes": [
+    {
+      "policies": {
+        "a2a": {},
+        "authorization": {"rules": [{"require": "false"}]}
+      },
+      "backends": [{"host": "127.0.0.1:9999"}]
+    }
+  ]
+}

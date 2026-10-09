@@ -1,0 +1,19 @@
+{
+  "binds": [
+    {"port": 3000, "tunnelProtocol": "connect", "listeners": []}
+  ],
+  "gateways": {
+    "tls-443": {
+      "port": 443,
+      "listeners": [{"name": "egress", "hostname": "*", "protocol": "TLS"}]
+    }
+  },
+  "tcpRoutes": [
+    {
+      "name": "allow-0",
+      "gateways": "tls-443/egress",
+      "hostnames": ["mcr.microsoft.com"],
+      "backends": [{"host": "mcr.microsoft.com:443"}]
+    }
+  ]
+}

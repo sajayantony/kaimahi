@@ -1,0 +1,15 @@
+{
+  "apiVersion": "agentsuite.dev/policy/v1alpha1",
+  "agent": "coordinator",
+  "capabilities": {
+    "protocol": "a2a",
+    "version": "1.0.0",
+    "skills": [{"id": "coordinate", "name": "Coordinate", "description": "Delegate text summarization to a peer.", "tags": ["text"]}]
+  },
+  "filesystem": {"write": "deny"},
+  "network": {
+    "default": "deny",
+    "allow": [{"scheme": "https", "host": "summarizer.example.com", "port": 443}]
+  },
+  "invocations": {"default": "deny", "allow": [{"agent": "summarizer", "skills": ["summarize"]}]}
+}

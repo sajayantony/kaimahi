@@ -19,6 +19,7 @@ pre{overflow:auto;padding:1rem;background:#8881}small{color:#888}
 and real local deny-all probes. Not production governance, full A2A conformance, or a certified sandbox.
 <a href="../agentsuite-governance-spike.md">Component plan, evidence and limitations</a>.</p>
 <p>Tracking: <a href="https://github.com/sajayantony/kaimahi/issues/2">sajayantony/kaimahi#2</a>.</p>
+<p><a href="../../agentsuite/policy/examples/agentgateway/README.md">Runnable MCR allowlist and native A2A gateway samples</a>.</p>
 
 <h2>Object flow and trust boundaries</h2>
 <div class="flow">
@@ -65,10 +66,21 @@ enforcement probes, drift and revocation. A JSON plan is not an attestation.</p>
 <tr><td>Filesystem</td><td>Read-only root + Landlock ABI &gt;= 3 + mutation syscall denial</td><td>Root/temp writes fail with EROFS; shared-memory/device write opens with EACCES; mutation calls with EPERM.</td></tr>
 <tr><td>New outbound calls</td><td>seccomp denies connect and explicitly addressed datagrams</td><td>Direct model/tool/A2A, IPv6, UDP, DNS datagrams, Unix sockets and child calls denied. Inbound replies remain possible.</td></tr>
 <tr><td>Gateway</td><td>agentgateway require: false</td><td>Four HTTP paths return 403; positive route returns 200; denied requests add zero backend hits.</td></tr>
-<tr><td>Hostname/skill allowlists</td><td>Represented, not implemented</td><td>Compiler rejects nonempty lists. No silent widening to domain-only or network-only authorization.</td></tr>
+<tr><td>Hostname/skill allowlists</td><td>Gateway HTTPS authority projection implemented; full sandbox and skill grants pending</td><td>MCR returns 200 through CONNECT; unlisted SNI, forged Host, wrong port and HTTP are rejected. The full sandbox compiler still fails closed on allowlists.</td></tr>
 <tr><td>Native runtimes</td><td>Orka / kagent / Azure / gVisor: future adapters</td><td>No equivalence or deployment claim. Inspektor Gadget is an observation source, not enforcement proof.</td></tr>
 </tbody>
 </table>
+<h2>URL allow example: Microsoft Container Registry</h2>
+<pre>"network": {
+  "default": "deny",
+  "allow": [{"scheme": "https", "host": "mcr.microsoft.com", "port": 443}]
+}
+
+curl.exe --noproxy "" --proxy http://127.0.0.1:18080 https://mcr.microsoft.com/v2/</pre>
+<p><code>GatewayEgressProjection</code> emits CONNECT/SNI routes with a fixed
+<code>mcr.microsoft.com:443</code> backend and an explicit list of unenforced
+controls. TLS passthrough cannot inspect URL paths, methods, caller claims or
+A2A skill operations. A bare curl without the proxy is not governed.</p>
 <p class="notice"><strong>Process-tree boundary:</strong> Landlock inheritance does not automatically cover
 Kubernetes exec/debug tasks or unrelated sidecars. Admission, RBAC, trusted launchers and node/profile
 verification remain required before production use.</p>

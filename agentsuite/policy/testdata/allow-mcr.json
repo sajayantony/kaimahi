@@ -1,0 +1,11 @@
+{
+  "apiVersion": "agentsuite.dev/policy/v1alpha1",
+  "agent": "registry-reader",
+  "capabilities": {"protocol": "a2a", "version": "1.0.0", "skills": []},
+  "filesystem": {"write": "deny"},
+  "network": {
+    "default": "deny",
+    "allow": [{"scheme": "https", "host": "mcr.microsoft.com", "port": 443}]
+  },
+  "invocations": {"default": "deny", "allow": []}
+}

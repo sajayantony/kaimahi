@@ -38,6 +38,18 @@ func TestPolicyStrictDecodingAndSchema(t *testing.T) {
 	if err := validate(raw); err != nil {
 		t.Fatal(err)
 	}
+	for _, name := range []string{"allow-mcr.json", "a2a-peer-request.json"} {
+		sample, err := os.ReadFile(filepath.Join(root, "testdata", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := DecodePolicy(sample); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if err := validate(sample); err != nil {
+			t.Fatalf("%s schema: %v", name, err)
+		}
+	}
 	for _, mutation := range []struct{ old, new string }{
 		{`"write": "deny"`, `"write": "allow"`},
 		{`"write": "deny"`, `"write": null`},
