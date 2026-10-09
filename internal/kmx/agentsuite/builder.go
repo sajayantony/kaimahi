@@ -66,6 +66,9 @@ func ResolveSandboxPlan(root string, selection BuildSelection) (*SandboxPlan, er
 	if err != nil {
 		return nil, err
 	}
+	if v.suite.Policy != nil {
+		return nil, errors.New("bundled suite policy is not supported by the current image builder; use the policy-aware application converter")
+	}
 
 	agentID := selection.Agent
 	if agentID == "" {

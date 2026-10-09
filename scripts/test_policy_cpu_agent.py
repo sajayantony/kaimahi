@@ -5,7 +5,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-spec = importlib.util.spec_from_file_location("policy_cpu_agent", Path(__file__).parent / "ci" / "policy-cpu-agent.py")
+spec = importlib.util.spec_from_file_location("policy_cpu_agent", Path(__file__).resolve().parents[1] / "internal/kmx/governance/cpu_agent.py")
 agent = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(agent)
 
@@ -52,6 +52,21 @@ class PolicyCPUAgentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             agent.probe("unknown", {"modelIP": "192.0.2.1", "peerIP": "192.0.2.2",
                 "otherGatewayIP": "192.0.2.3", "mcrIP": "192.0.2.4"})
+
+    def test_openai_model_settings_and_complete_response(self):
+        response = {"model": "cpu-model", "choices": [{"finish_reason": "stop", "message": {"content": "answer"}}],
+                    "usage": {"completion_tokens": 2, "prompt_tokens": 3}}
+        settings = {"modelProtocol": "openai-compatible", "modelName": "cpu-model", "instructions": "be brief"}
+        with patch.object(agent, "http_json", return_value=response) as call:
+            text, evidence = agent.infer("gateway", "question", settings)
+        self.assertEqual(text, "answer")
+        self.assertEqual(evidence["eval_count"], 2)
+        self.assertEqual(call.call_args.args[2], "/v1/chat/completions")
+        self.assertEqual(call.call_args.args[3]["reasoning_effort"], "none")
+        self.assertIn("be brief", call.call_args.args[3]["messages"][0]["content"])
+        response["choices"][0]["finish_reason"] = "length"
+        with patch.object(agent, "http_json", return_value=response), self.assertRaises(RuntimeError):
+            agent.infer("gateway", "question", settings)
 
 
 if __name__ == "__main__":

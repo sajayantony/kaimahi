@@ -5,9 +5,9 @@
 **Last updated:** October 8, 2026
 
 **Experimental governance work:** [policy objects, local deny-all evidence and
-component plan](agentsuite-governance-spike.md). That standalone proposal does
-not change this draft's required object graph or imply policy enforcement by
-existing suite consumers.
+component plan](agentsuite-governance-spike.md). This branch adds the optional,
+mandatory-to-process `policy` reference described below. It does not imply
+policy enforcement by existing suite consumers.
 
 ## Abstract
 
@@ -344,6 +344,7 @@ complete ToolProvider composition manifest.
 - zero or more per-provider, per-platform ToolProvider compositions (`toolProviderCompositions`);
 - one or more digest-bound build profiles;
 - capabilities derived from tool provider declarations;
+- optional digest-bound experimental suite policy (`policy`);
 - optional non-critical extensions.
 
 Every reference MUST resolve within the same content layer and MUST match the
@@ -356,6 +357,31 @@ derived from tool provider declarations:
 
 Unknown critical extensions MUST be rejected. Non-critical extensions MAY be
 retained or ignored.
+
+### 7.1 Experimental suite policy reference
+
+On this spike branch, `policy` MAY be a `{ "path": "...", "digest": "sha256:..." }`
+reference to an `agentsuite.dev/suite-policy/v1alpha1` document. Explicit `null`
+is invalid. The referenced JSON MUST match its JCS digest, suite identity,
+complete agent membership and declared invocation edges. OCI directory packing
+preserves the reference and policy contents.
+
+This field is **not** a non-critical extension. A consumer that builds or
+deploys the suite MUST enforce its required controls or reject it. The current
+builder and ordinary lift/deployment paths reject bundled policy; only the
+experimental policy-aware converter handles it.
+
+A policy MAY instead be supplied separately at conversion time. The operator's
+deployment binding pins both the suite's logical manifest digest and the
+policy's canonical digest. If bundled and external policies are both supplied,
+their canonical digests MUST agree; no override or implicit intersection occurs.
+The converter rejects missing policy. External policy is not automatically
+discovered by ordinary suite consumers.
+
+Policy carries logical identities and requests, not runtime selectors or
+authorization. Deployment metadata supplies runtime bindings separately.
+See the [complete bundled/external example](../agentsuite/policy/examples/suite-application/README.md)
+and [experimental schema](../agentsuite/policy/suite.schema.json).
 
 ## 8. Agents
 

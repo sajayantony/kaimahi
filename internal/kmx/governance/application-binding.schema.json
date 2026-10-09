@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaimahi.dev/experimental/policy-application-binding.schema.json",
+  "title": "Operator-owned application binding (not portable policy)",
+  "type": "object", "additionalProperties": false,
+  "required": ["apiVersion", "suiteDigest", "policyDigest", "namespace", "adapter", "gatewayImage", "agents", "model"],
+  "properties": {
+    "apiVersion": {"const": "kaimahi.dev/policy-application/v1alpha1"},
+    "suiteDigest": {"$ref": "#/$defs/digest"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "namespace": {"$ref": "#/$defs/name"},
+    "adapter": {"const": "cilium-cpu-v1"},
+    "gatewayImage": {"$ref": "#/$defs/image"},
+    "agents": {
+      "type": "object", "minProperties": 2, "maxProperties": 2,
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["workload", "runtime", "image"],
+        "properties": {
+          "workload": {"$ref": "#/$defs/name"},
+          "runtime": {"enum": ["coordinator", "registry-reader"]},
+          "image": {"$ref": "#/$defs/image"}
+        }
+      }
+    },
+    "model": {
+      "type": "object", "additionalProperties": false, "required": ["resource", "workload", "image", "model"],
+      "properties": {
+        "resource": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+        "workload": {"$ref": "#/$defs/name"},
+        "image": {"$ref": "#/$defs/image"},
+        "model": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "name": {"type": "string", "pattern": "^[a-z]([a-z0-9-]{0,48}[a-z0-9])?$"},
+    "image": {"type": "string", "pattern": "^[^\\s]+@sha256:[a-f0-9]{64}$"}
+  }
+}

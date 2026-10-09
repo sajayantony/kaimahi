@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/kaimahi-agents/kaimahi/agentsuite/policy"
 )
 
 var (
@@ -47,6 +49,7 @@ type validator struct {
 	toolProviderCompositions map[string]ToolProviderComposition
 	compositions             map[string]Composition
 	builds                   map[string]BuildProfile
+	policy                   *policy.SuitePolicy
 }
 
 func validateContent(content *contentSet) (*Report, error) {
@@ -81,6 +84,7 @@ func validateContentGraph(content *contentSet) (*validator, *Report, error) {
 	errs = append(errs, v.loadToolProviderCompositions())
 	errs = append(errs, v.loadCompositions())
 	errs = append(errs, v.validateReferences())
+	errs = append(errs, v.loadSuitePolicy())
 	if err := errors.Join(errs...); err != nil {
 		return nil, nil, err
 	}
@@ -134,6 +138,17 @@ func validateContentGraph(content *contentSet) (*validator, *Report, error) {
 
 func (v *validator) validateSuite() error {
 	var errs []error
+	raw, err := v.content.data("agentsuite.json")
+	if err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return err
+	}
+	if value, present := fields["policy"]; present && strings.TrimSpace(string(value)) == "null" {
+		errs = append(errs, errors.New("policy must be omitted or contain a digest-bound reference, not null"))
+	}
 	if v.suite.SchemaVersion != SpecVersion {
 		errs = append(errs, fmt.Errorf("agentsuite.json schemaVersion must be %s", SpecVersion))
 	}

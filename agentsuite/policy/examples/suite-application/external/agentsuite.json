@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0.0-draft",
+  "mediaType": "application/vnd.agentsuite.manifest.v1+json",
+  "name": "registry-check",
+  "agents": [
+    {
+      "id": "coordinator",
+      "path": "agents/coordinator.json",
+      "digest": "sha256:4ae086b8840855a394a9e61d415b4f6d86cadbf82ee7863a450b8a87f7f1efbe"
+    },
+    {
+      "id": "registry-reader",
+      "path": "agents/registry-reader.json",
+      "digest": "sha256:eac172eaee01ba431aa952291ca279e267b7194dec7ae89619ed29190236dd71"
+    }
+  ],
+  "toolProviderCatalog": {
+    "id": "catalog",
+    "path": "tool-providers/catalog.json",
+    "digest": "sha256:933283a1fa90fd488db3f872fb89dc1572a5f638bf0a81514a542333e310ef95"
+  },
+  "compositions": [
+    {
+      "agent": "coordinator",
+      "platform": {
+        "os": "linux",
+        "architecture": "amd64"
+      },
+      "path": "compositions/coordinator.json",
+      "digest": "sha256:f19b2d9fb63ed4e3559be2cc0a35c5b4d9226755e470494324772035b8f59094"
+    },
+    {
+      "agent": "registry-reader",
+      "platform": {
+        "os": "linux",
+        "architecture": "amd64"
+      },
+      "path": "compositions/registry-reader.json",
+      "digest": "sha256:c5813c0453f0f0e0d2c445f76ea4b60fbcfc47d63603752ccf1726d10884b4d5"
+    }
+  ],
+  "buildProfiles": [
+    {
+      "id": "agentkit-v0.1.0",
+      "path": "build-profiles/agentkit-v0.1.0.json",
+      "digest": "sha256:cd3a5fd2a53cdf83177a65537a3f21181c2f28cc62a7badfd13cc81d66df52a7"
+    }
+  ],
+  "capabilities": [],
+  "extensions": []
+}

@@ -113,6 +113,9 @@ func ValidateImageSource(root string, record ImageDeployment) error {
 	if err := decodeStrict(raw, &suite); err != nil {
 		return err
 	}
+	if suite.Policy != nil {
+		return errors.New("image lift cannot silently ignore a bundled suite policy")
+	}
 	var agent Agent
 	found := false
 	for _, ref := range suite.Agents {

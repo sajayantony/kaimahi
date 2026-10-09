@@ -9,6 +9,7 @@ import socket
 import ssl
 import subprocess
 import sys
+import threading
 import traceback
 import uuid
 
@@ -44,7 +45,21 @@ def registry_get(proxy, hostname="mcr.microsoft.com", port=443):
         connection.close()
 
 
-def infer(gateway, prompt):
+def infer(gateway, prompt, settings=None):
+    if settings and settings.get("instructions"):
+        prompt = settings["instructions"] + "\n\n" + prompt
+    if settings and settings.get("modelProtocol") == "openai-compatible":
+        result = http_json(gateway, 3001, "/v1/chat/completions", {
+            "model": settings["modelName"], "stream": False, "temperature": 0, "max_tokens": 128,
+            "reasoning_effort": "none",
+            "messages": [{"role": "user", "content": prompt}],
+        })
+        text = result["choices"][0]["message"]["content"].strip()
+        tokens = result["usage"]["completion_tokens"]
+        if not text or tokens <= 0 or result["choices"][0]["finish_reason"] != "stop":
+            raise RuntimeError("model did not produce a nonempty inference")
+        return text, {"model": result["model"], "eval_count": tokens,
+                      "prompt_eval_count": result["usage"]["prompt_tokens"]}
     result = http_json(gateway, 3001, "/api/chat", {
         "model": "qwen3:0.6b", "stream": False, "think": False, "keep_alive": "10m",
         "messages": [{"role": "user", "content": prompt}],
@@ -75,17 +90,21 @@ def input_text(body):
     return text
 
 
-def workflow(agent, gateway, text):
-    if agent == "registry-reader":
-        observation = registry_get(gateway)
+def workflow(agent, gateway, text, settings=None):
+    settings = settings or {}
+    role = settings.get("role", agent)
+    if role == "registry-reader":
+        observation = registry_get(gateway, settings.get("registryHost", "mcr.microsoft.com"),
+                                   settings.get("registryPort", 443))
         answer, model = infer(gateway, "In one sentence explain this measured registry result. "
-                              "Do not invent observations: " + json.dumps(observation))
+                              "Do not invent observations: " + json.dumps(observation), settings)
         evidence = {"registry": observation, "summary": answer, "model": model}
-    elif agent == "coordinator":
-        peer = http_json(gateway, 3001, "/skills/inspect-registry/message:send", {"message": message(text)})
+    elif role == "coordinator":
+        peer = http_json(gateway, 3001, settings.get("peerPath", "/skills/inspect-registry/message:send"),
+                         {"message": message(text)})
         observation = peer["message"]["metadata"]["policyExample"]
         answer, model = infer(gateway, "Summarize this registry check in one sentence. "
-                              "Do not claim checks not in the evidence: " + json.dumps(observation))
+                              "Do not claim checks not in the evidence: " + json.dumps(observation), settings)
         evidence = {"peer": observation, "model": model}
     else:
         raise ValueError("unknown agent")
@@ -140,7 +159,8 @@ def probe(case, config):
         raise AssertionError("agent DNS send succeeded")
     if case in ("model-admin", "forbidden-skill", "forbidden-peer", "wrong-method"):
         paths = {"model-admin": "/api/tags", "forbidden-skill": "/skills/delete-registry/message:send",
-                 "forbidden-peer": "/skills/coordinate/message:send", "wrong-method": "/api/chat"}
+                 "forbidden-peer": "/skills/coordinate/message:send",
+                 "wrong-method": "/v1/chat/completions" if config.get("modelProtocol") == "openai-compatible" else "/api/chat"}
         method = "GET" if case in ("model-admin", "wrong-method") else "POST"
         connection = http.client.HTTPConnection(config["gatewayIP"], 3001, timeout=10)
         try:
@@ -174,6 +194,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/healthz":
             self.respond(200, {"ready": True})
         elif self.path == "/.well-known/agent-card.json":
+            if hasattr(self.server, "card"):
+                self.respond(200, self.server.card)
+                return
             policy = self.server.policy
             skill = policy["capabilities"]["skills"][0]
             self.respond(200, {
@@ -194,9 +217,18 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 raise ValueError("request must be an object")
             if self.path == "/probe":
-                result = probe(body["case"], self.server.config)
+                config = dict(self.server.config)
+                if "mcrIP" in body:
+                    config["mcrIP"] = str(ipaddress.IPv4Address(body["mcrIP"]))
+                result = probe(body["case"], config)
             elif self.path == self.server.config["skillPath"]:
-                result = workflow(self.server.policy["agent"], self.server.config["gatewayIP"], input_text(body))
+                if not self.server.workflow_lock.acquire(blocking=False):
+                    self.respond(429, {"error": "one concurrent workflow is permitted"})
+                    return
+                try:
+                    result = workflow(self.server.policy["agent"], self.server.config["gatewayIP"], input_text(body), self.server.config)
+                finally:
+                    self.server.workflow_lock.release()
             else:
                 self.respond(404, {"error": "unsupported endpoint"})
                 return
@@ -210,9 +242,20 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    with open("/example/policy.json") as source:
-        policy = json.load(source)
     config = json.loads(os.environ["EXAMPLE_CONFIG"])
+    identity_path = "/example/identity.json" if config.get("generatedCard") else "/example/policy.json"
+    with open(identity_path) as source:
+        policy = json.load(source)
+    for key, variable in config.get("serviceEnvironment", {}).items():
+        config[key] = os.environ[variable]
+    if config.get("generatedCard"):
+        with open("/etc/resolv.conf") as source:
+            nameservers = [line.split()[1] for line in source if line.startswith("nameserver ")]
+        config["dnsIP"] = str(ipaddress.IPv4Address(nameservers[0]))
     server = ThreadingHTTPServer(("0.0.0.0", 8080), Handler)
     server.policy, server.config = policy, config
+    server.workflow_lock = threading.BoundedSemaphore(1)
+    if config.get("generatedCard"):
+        with open("/example/agent-card.json") as source:
+            server.card = json.load(source)
     server.serve_forever()

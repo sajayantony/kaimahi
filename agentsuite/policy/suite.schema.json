@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentsuite.dev/experimental/suite-policy.schema.json",
+  "title": "Portable experimental suite policy request",
+  "type": "object", "additionalProperties": false,
+  "required": ["apiVersion", "suite", "defaults", "resources", "agents"],
+  "properties": {
+    "apiVersion": {"const": "agentsuite.dev/suite-policy/v1alpha1"},
+    "suite": {"$ref": "policy.schema.json#/$defs/id"},
+    "defaults": {
+      "type": "object", "additionalProperties": false,
+      "required": ["filesystemWrite", "network", "invocations"],
+      "properties": {
+        "filesystemWrite": {"const": "deny"}, "network": {"const": "deny"}, "invocations": {"const": "deny"}
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "kind"],
+        "properties": {
+          "id": {"$ref": "policy.schema.json#/$defs/id"},
+          "kind": {"enum": ["model", "https"]},
+          "destination": {"allOf": [
+            {"$ref": "policy.schema.json#/$defs/destination"},
+            {"properties": {"scheme": {"const": "https"}}}
+          ]}
+        },
+        "if": {"properties": {"kind": {"const": "https"}}},
+        "then": {"required": ["destination"]},
+        "else": {"properties": {"destination": false}}
+      }
+    },
+    "agents": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["agent", "capabilities", "resources", "invocations"],
+        "properties": {
+          "agent": {"$ref": "policy.schema.json#/$defs/id"},
+          "capabilities": {"$ref": "policy.schema.json#/properties/capabilities"},
+          "resources": {"type": "array", "uniqueItems": true, "items": {"$ref": "policy.schema.json#/$defs/id"}},
+          "invocations": {"$ref": "policy.schema.json#/properties/invocations/properties/allow"}
+        }
+      }
+    }
+  }
+}

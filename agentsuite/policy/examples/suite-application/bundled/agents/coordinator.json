@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0-draft",
+  "mediaType": "application/vnd.agentsuite.agent.v1+json",
+  "id": "coordinator",
+  "description": "coordinator",
+  "instructions": {
+    "path": "instructions/coordinator.md",
+    "digest": "sha256:06a9f241827f7b6c18a0e251445d2897ed878f4e0be7be0ca55e0bd43d251c14"
+  },
+  "model": {
+    "protocol": "openai-compatible",
+    "model": "inference"
+  },
+  "toolProviders": [],
+  "invokes": [
+    {
+      "agent": "registry-reader",
+      "maxConcurrent": 1,
+      "maxDepth": 1
+    }
+  ],
+  "extensions": []
+}

@@ -9,6 +9,7 @@ Capabilities advertise behavior; they do not grant permission.
 | [Allow MCR](../testdata/allow-mcr.json) / [native gateway](agentgateway/allow-mcr.json) | CONNECT proxy, exact TLS SNI, fixed `mcr.microsoft.com:443` backend | HTTPS MCR succeeds; other hosts, ports and cleartext HTTP fail. Gateway-only: direct bypass remains possible. |
 | [A2A request](../testdata/a2a-peer-request.json) / [native deny](agentgateway/a2a-deny-all.json) | Separate advertised skills and requested peer grants; native route denies every request | Discovery and message requests return 403. Does **not** implement general A2A authorization. |
 | [CPU coordinator](kind-cpu-agents/coordinator.json) + [registry reader](kind-cpu-agents/registry-reader.json) | Two Python agents, Ollama `qwen3:0.6b`, dedicated agentgateways, Cilium NetworkPolicy, filesystem sandbox | Real CPU inference and delegated MCR access succeed; file writes, unauthorized routes and direct-network bypass fail. |
+| [Suite -> Kubernetes application](suite-application/README.md) | Bundled or external portable suite policy + digest-bound deployment metadata -> independent Cilium, gateway, A2A and filesystem adapters | Generated application runs the same workflow; policy contains no runtime selectors or Cilium fields. |
 
 ## Enforcement layers
 

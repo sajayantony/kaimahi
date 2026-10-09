@@ -1,7 +1,8 @@
 # AgentSuite policy and governance spike
 
 **Status: experimental design and local enforcement evidence, not a production
-governance feature.** The installed `kmx lift` path is unchanged. The separate
+governance feature.** Installed `kmx lift` does not enforce policy and rejects
+new bundled policy rather than dropping it. The separate
 `policy-spike` renderer composes the image Deployment/Service renderer from
 [kaimahi-agents/kaimahi#342](https://github.com/kaimahi-agents/kaimahi/pull/342).
 See the [offline object map](assets/agentsuite-governance.html).
@@ -28,6 +29,9 @@ proof that all agent activity is governed.
 | Object | Location / status | Meaning |
 |---|---|---|
 | `policy.Document` | `agentsuite/policy/policy.go`, implemented | One agent's experimental requested restrictions and separate advertisement input. |
+| `policy.SuitePolicy` | `agentsuite/policy/suite.go`, implemented | Suite-wide deny defaults, logical resources and per-agent requests; no Kubernetes/Cilium metadata. |
+| `Suite.Policy` | Experimental optional manifest file reference | Bundled policy, JCS digest-bound and carried by packing; external policy is also supported by explicit conversion. |
+| `ApplicationBinding` / `ApplicationBundle` | `internal/kmx/governance`, implemented | Separate operator deployment metadata and generated Cilium policies, gateways, cards, profiles and Kubernetes workloads. Not approval or activation. |
 | `Capabilities`, `Skill` | Same package, implemented | A2A 1.0.0 skill metadata; no endpoint, credential, authenticated principal or authorization. Not a complete AgentCard. |
 | `Filesystem` | Same package, implemented | Explicit `write: deny`; no writable temp/cache exceptions. |
 | `Network`, `Destination` | Same package, implemented | Default deny plus exact lowercase DNS hostname, scheme and port tuples. No paths, wildcards, IP literals or implicit DNS exemption. |
@@ -49,10 +53,10 @@ Portable data lives in the top-level package; translation and deployment stay
 internal. The main-based tree still keeps the shared strict decoder internal;
 move it with the pending AgentSuite extraction rather than duplicate it here.
 
-The new document is deliberately **not** a non-critical suite extension.
-Normal suite validation/build/lift does not claim to enforce it. Production
-integration requires a digest-bound reference with mandatory processing and
-unknown-required-policy rejection at every consuming boundary.
+Policy is deliberately **not** a non-critical suite extension. The optional
+digest-bound manifest reference is now validated and packed. Existing
+build/lift paths reject bundled policy; they do not claim to enforce it.
+Production enforcement still requires integration at every consuming boundary.
 
 ## Exact spike semantics
 
@@ -201,6 +205,33 @@ digests, the model digest/CPU placement, generated objects and actual results.
 The model tag is resolved at download time and recorded; it is not an immutable
 model-version lock. Model caches disappear with their containers.
 
+## Suite policy to application
+
+The [full sample](../agentsuite/policy/examples/suite-application/README.md) adds
+two complete suites: one bundles policy, the other receives it separately.
+Both use the same portable intent. A separate binding pins the suite/policy
+digests and maps logical identities to images, namespace, workloads and model.
+Conflicting bundled/external policies fail rather than silently overriding.
+
+The converter emits native CiliumNetworkPolicy through `cilium.go`, gateway
+routes/workloads through `application_runtime.go`, cards through `a2a.go`,
+and filesystem profiles through the shared sandbox projection. The shared
+agent runtime is embedded from `internal/kmx/governance/cpu_agent.py`.
+It consumes suite instructions and uses the bound logical model through the
+OpenAI-compatible API; `reasoning_effort: none` avoids empty final answers from
+the small CPU model. Empty/incomplete answers fail the sample.
+
+The activation runner creates policies/services first, verifies profiles,
+downloads model weights under a temporary bootstrap policy, removes that policy,
+then starts agent workloads. Services must exist before agents because service
+IP environment injection avoids granting agents DNS access. The trusted validator
+has explicit broad egress for positive controls; it is not a governed agent.
+
+Both modes passed real two-agent inference and all 23 probe groups on Cilium
+kind, with MCR HTTP 200 and zero model VRAM. This is a bounded converter, not
+arbitrary AgentSuite image construction or production `kmx lift` integration.
+General protocol authorization and governance approval remain separate work.
+
 ## Evidence and changes discovered
 
 Base: upstream main `5828972`, fetched before changes. Lift PR head
@@ -242,6 +273,13 @@ Its drop counter is supporting node-wide evidence, not per-request attribution;
 timeouts alone are not proof. The receipt combines these counters with live
 positive controls and agent-originated probes.
 
+The generated suite applications are retained on the same Cilium cluster:
+`suite-policy-5c3e483b` (bundled) and `suite-policy-5db290df` (external).
+Each run passed 23 probe groups, checked served cards against generated cards,
+and recorded 30 additional node-wide egress policy drops. Both bind portable
+policy `sha256:cdf153060a3de713054868bf5e31b6e9b0034163022b52eb3fac0c022a0f4318`.
+The initial failed suite-run namespace was removed.
+
 ## Component plan / implementation checklist
 
 These are follow-ups, not capabilities implied by the spike.
@@ -255,6 +293,7 @@ These are follow-ups, not capabilities implied by the spike.
 - [ ] **Gateway translation:** bind authenticated workload identity to a fixed upstream; prevent Host/SNI spoofing, redirects, proxy bypass, direct IP access and DNS rebinding. Separate model, MCP, A2A and arbitrary HTTP authorization. Preserve streaming/cancellation while rejecting unauthorized skill operations.
 - [x] **Gateway sample/projection:** map exact HTTPS host/port requests into pinned CONNECT/SNI configuration with fixed backends; show MCR success and unlisted-host/port/cleartext denial. Explicitly report remaining whole-policy obligations.
 - [x] **CPU integration sample:** run two model-backed agents with dedicated gateways, Cilium bypass prevention and filesystem restrictions; document fixed skill endpoint bindings without claiming general A2A authorization.
+- [x] **Suite application spike:** bundled/external digest-bound policy, separate deployment bindings, independent Cilium/gateway/card projections, packing round-trip and both delivery modes exercised on kind. Unsupported legacy build/lift paths reject bundled policy.
 - [ ] **Hostname/port allowlists:** choose an enforceable transport path (policy-capable CNI plus authenticated gateway or equivalent sandbox proxy). kind's default kindnet is not evidence of NetworkPolicy enforcement. Add allowed-host success, denied-host failure, wrong-port failure and bypass probes.
 - [ ] **A2A adapter:** project advertisement into the runtime's version-pinned AgentCard; bind endpoint/authentication at deployment. Keep caller principal, peer identity and skill grants separate; cover discovery, message sends, task operations, streaming and push callbacks.
 - [ ] **Orka adapter:** map only documented tool/delegation controls, validate actual runtime enforcement, and preserve immutable runtime revisions. Current pinned CRD fixtures are evidence of fields, not proof of OS egress or filesystem isolation.

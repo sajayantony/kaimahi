@@ -61,6 +61,7 @@ type Suite struct {
 	BuildProfiles            []ManifestRef                `json:"buildProfiles"`
 	Capabilities             []string                     `json:"capabilities,omitempty"`
 	Extensions               []Extension                  `json:"extensions,omitempty"`
+	Policy                   *FileRef                     `json:"policy,omitempty"`
 }
 
 type ManifestRef struct {

@@ -71,7 +71,12 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]{0,127}$"}
     },
-    "extensions": {"$ref": "#/$defs/extensions"}
+    "extensions": {"$ref": "#/$defs/extensions"},
+    "policy": {
+      "description": "Optional JCS-digest-bound portable suite policy. Deployment must explicitly enforce it.",
+      "type": "object", "additionalProperties": false, "required": ["path", "digest"],
+      "properties": {"path": {"$ref": "#/$defs/path"}, "digest": {"$ref": "#/$defs/digest"}}
+    }
   },
   "$defs": {
     "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},

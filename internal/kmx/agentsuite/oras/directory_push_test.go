@@ -10,11 +10,36 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kaimahi-agents/kaimahi/internal/kmx/agentsuite"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/content/oci"
 )
+
+func TestBundledSuitePolicySurvivesPushPull(t *testing.T) {
+	source := filepath.Join("..", "..", "..", "..", "agentsuite", "policy", "examples", "suite-application", "bundled")
+	layout := filepath.Join(t.TempDir(), "layout")
+	output := filepath.Join(t.TempDir(), "pulled")
+	ctx := context.Background()
+	if _, err := Push(ctx, source, layout, "policy-example:v1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Pull(ctx, layout, "policy-example:v1", output); err != nil {
+		t.Fatal(err)
+	}
+	before, p, err := agentsuite.ResolvePolicyDeploymentSuite(source, agentsuite.Platform{OS: "linux", Architecture: "amd64"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, restored, err := agentsuite.ResolvePolicyDeploymentSuite(output, agentsuite.Platform{OS: "linux", Architecture: "amd64"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.LogicalDigest() != after.LogicalDigest() || p.Suite != restored.Suite || restored.Resources[1].Destination.Host != "mcr.microsoft.com" {
+		t.Fatal("policy or suite identity was lost during packing/transfer")
+	}
+}
 
 func TestPushDirectoryIsIndependentOfFilesystemTimestamps(t *testing.T) {
 	root := t.TempDir()

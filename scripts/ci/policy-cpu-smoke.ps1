@@ -167,7 +167,7 @@ foreach ($agent in @('coordinator', 'registry-reader')) {
         modelIP = $modelIP; peerIP = (IP 'service' $peer); mcrIP = $mcrIP; dnsIP = $dnsIP
         skillPath = "/skills/$skill/message:send"; publicURL = "http://${agent}:8080/skills/$skill"}
     Create @{apiVersion = 'v1'; kind = 'ConfigMap'; metadata = @{name = $agent; namespace = $Namespace}
-        data = @{'agent.py' = (Get-Content (Join-Path $PSScriptRoot 'policy-cpu-agent.py') -Raw)
+        data = @{'agent.py' = (Get-Content (Join-Path $repo 'internal\kmx\governance\cpu_agent.py') -Raw)
             'launcher.py' = $projection.launcher; 'policy.json' = ($policies[$agent] | ConvertTo-Json -Depth 100)}}
     Create @{apiVersion = 'v1'; kind = 'Pod'; metadata = @{name = $agent; namespace = $Namespace; labels = @{app = $agent}
             annotations = @{'agentsuite.dev/policy-digest' = $projection.policyDigest; 'agentsuite.dev/profile-digest' = $projection.profileDigest}}

@@ -99,6 +99,23 @@ authorization, protocol conformance or an installed lift adapter.</p>
 Kubernetes exec/debug tasks or unrelated sidecars. Admission, RBAC, trusted launchers and node/profile
 verification remain required before production use.</p>
 <h2>Components to update next</h2>
+<h3>Implemented: portable suite to Kubernetes application</h3>
+<pre>bundled suite policy OR suite + external policy
+  + digest-bound deployment metadata
+  -&gt; Cilium adapter: native network policies
+  -&gt; agentgateway adapter: fixed routes and HTTPS authority
+  -&gt; A2A adapter: deployed AgentCards (advertisement, not grants)
+  -&gt; filesystem adapter: Landlock/seccomp profiles
+  -&gt; Kubernetes services, model, gateways and agent workloads</pre>
+<p><code>SuitePolicy</code> contains logical model/HTTPS resources, deny defaults
+and per-agent requests. <code>ApplicationBinding</code> owns images, namespace,
+workload names and runtime selection. No Cilium fields enter portable policy.
+Bundled and external policies must agree if both are provided.</p>
+<p>Both delivery modes ran real CPU inference and passed 23 probe groups on kind.
+The runner installs controls before agents and removes model bootstrap egress.
+Existing build/lift paths reject bundled policy rather than silently losing it.
+<a href="../../agentsuite/policy/examples/suite-application/README.md">Complete sample and conversion commands</a>.</p>
+<h3>Still required for production</h3>
 <p>Spec graph and canonical identity &rarr; policy intersection and operator binding &rarr; whole-suite
 prepare/inspect/deploy &rarr; runtime capability negotiation &rarr; identity-bound gateway and sandbox
 adapters &rarr; activation receipts, drift/revocation and conformance tests.</p>

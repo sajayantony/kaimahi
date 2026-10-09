@@ -18,6 +18,14 @@ func ProjectGatewaySandbox(document policy.Document) (GatewaySandboxProjection, 
 	if err := document.Validate(); err != nil {
 		return GatewaySandboxProjection{}, err
 	}
+	policyDigest, err := Digest(document)
+	if err != nil {
+		return GatewaySandboxProjection{}, err
+	}
+	return projectFilesystem(policyDigest)
+}
+
+func projectFilesystem(policyDigest string) (GatewaySandboxProjection, error) {
 	profile := denyProfile()
 	names := make([]string, 0, len(profile.Syscalls[0].Names))
 	for _, name := range profile.Syscalls[0].Names {
@@ -30,10 +38,6 @@ func ProjectGatewaySandbox(document policy.Document) (GatewaySandboxProjection, 
 		Names: []string{"socket"}, Action: "SCMP_ACT_ERRNO", ErrnoRet: 1,
 		Args: []Argument{{Index: 0, Value: 1, Op: "SCMP_CMP_EQ"}},
 	})
-	policyDigest, err := Digest(document)
-	if err != nil {
-		return GatewaySandboxProjection{}, err
-	}
 	profileDigest, err := Digest(profile)
 	if err != nil {
 		return GatewaySandboxProjection{}, err

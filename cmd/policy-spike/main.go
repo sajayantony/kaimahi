@@ -26,11 +26,50 @@ func run() error {
 	policyPath := flag.String("policy", "", "experimental policy JSON")
 	gatewayEgress := flag.Bool("gateway-egress", false, "project HTTPS authorities only; does not enforce the whole policy")
 	gatewaySandbox := flag.Bool("gateway-sandbox", false, "project filesystem controls only; requires external gateway and network enforcement")
+	suitePath := flag.String("suite", "", "validated AgentSuite directory for application conversion")
+	suitePolicyPath := flag.String("suite-policy", "", "external portable suite policy; must agree with a bundled policy")
+	bindingPath := flag.String("binding", "", "digest-bound application deployment metadata")
 	recordPath := flag.String("record", "", "image execution record JSON (not registry-verified)")
 	environmentPath := flag.String("environment", "", "explicit lift environment JSON")
 	image := flag.String("image", "", "digest-pinned image reference")
 	commandJSON := flag.String("command", "", "workload argv as a JSON array; image must contain Python 3")
 	flag.Parse()
+	if *suitePath != "" {
+		if flag.NArg() != 0 || *bindingPath == "" || *policyPath != "" || *gatewayEgress || *gatewaySandbox ||
+			*recordPath != "" || *environmentPath != "" || *image != "" || *commandJSON != "" {
+			return errors.New("-suite requires -binding and cannot be combined with per-agent/deployment modes")
+		}
+		var external []byte
+		var err error
+		if *suitePolicyPath != "" {
+			external, err = read(*suitePolicyPath)
+			if err != nil {
+				return err
+			}
+		}
+		raw, err := read(*bindingPath)
+		if err != nil {
+			return err
+		}
+		var binding governance.ApplicationBinding
+		if err := agentsuite.DecodeStrictJSON(raw, &binding); err != nil {
+			return err
+		}
+		suite, p, err := agentsuite.ResolvePolicyDeploymentSuite(*suitePath, agentsuite.Platform{OS: "linux", Architecture: "amd64"}, external)
+		if err != nil {
+			return err
+		}
+		bundle, err := governance.CompileApplication(suite, p, binding)
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(bundle)
+	}
+	if *suitePolicyPath != "" || *bindingPath != "" {
+		return errors.New("-suite-policy and -binding require -suite")
+	}
 	if flag.NArg() != 0 || *policyPath == "" {
 		return errors.New("-policy is required and positional arguments are unsupported")
 	}

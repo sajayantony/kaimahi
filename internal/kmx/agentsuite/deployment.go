@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"slices"
+
+	"github.com/kaimahi-agents/kaimahi/agentsuite/policy"
 )
 
 // DeploymentMember is one verified agent and its exact platform selection.
@@ -26,6 +28,7 @@ type DeploymentSuite struct {
 	digest    string
 	members   []DeploymentMember
 	providers []ToolProvider
+	policy    *policy.SuitePolicy
 }
 
 func (s *DeploymentSuite) Name() string          { return s.suite.Name }
@@ -46,6 +49,10 @@ func (s *DeploymentSuite) ToolProviders() []ToolProvider {
 // ResolveDeploymentSuite selects every agent on one platform. A missing member
 // composition fails the entire request; there is no partial selection mode.
 func ResolveDeploymentSuite(root string, platform Platform) (*DeploymentSuite, error) {
+	return resolveDeploymentSuite(root, platform, false)
+}
+
+func resolveDeploymentSuite(root string, platform Platform, policyAware bool) (*DeploymentSuite, error) {
 	if err := validatePlatform(platform); err != nil {
 		return nil, err
 	}
@@ -53,8 +60,12 @@ func ResolveDeploymentSuite(root string, platform Platform) (*DeploymentSuite, e
 	if err != nil {
 		return nil, err
 	}
-	if _, err := validateContent(content); err != nil {
+	validated, _, err := validateContentGraph(content)
+	if err != nil {
 		return nil, err
+	}
+	if validated.suite.Policy != nil && !policyAware {
+		return nil, errors.New("bundled suite policy requires the experimental policy-aware application converter")
 	}
 	decode := func(name string, target any) error {
 		data, err := content.data(name)
@@ -75,7 +86,7 @@ func ResolveDeploymentSuite(root string, platform Platform) (*DeploymentSuite, e
 	if err != nil {
 		return nil, err
 	}
-	result := &DeploymentSuite{suite: suite, digest: digest}
+	result := &DeploymentSuite{suite: suite, digest: digest, policy: validated.policy}
 	profiles := map[string]BuildProfile{}
 	for _, ref := range suite.BuildProfiles {
 		var profile BuildProfile

@@ -1,0 +1,76 @@
+{
+  "apiVersion": "agentsuite.dev/suite-policy/v1alpha1",
+  "suite": "registry-check",
+  "defaults": {
+    "filesystemWrite": "deny",
+    "network": "deny",
+    "invocations": "deny"
+  },
+  "resources": [
+    {
+      "id": "inference",
+      "kind": "model"
+    },
+    {
+      "id": "registry",
+      "kind": "https",
+      "destination": {
+        "scheme": "https",
+        "host": "mcr.microsoft.com",
+        "port": 443
+      }
+    }
+  ],
+  "agents": [
+    {
+      "agent": "coordinator",
+      "capabilities": {
+        "protocol": "a2a",
+        "version": "1.0.0",
+        "skills": [
+          {
+            "id": "coordinate",
+            "name": "Coordinate",
+            "description": "Delegate a registry check and summarize its result.",
+            "tags": [
+              "registry"
+            ]
+          }
+        ]
+      },
+      "resources": [
+        "inference"
+      ],
+      "invocations": [
+        {
+          "agent": "registry-reader",
+          "skills": [
+            "inspect-registry"
+          ]
+        }
+      ]
+    },
+    {
+      "agent": "registry-reader",
+      "capabilities": {
+        "protocol": "a2a",
+        "version": "1.0.0",
+        "skills": [
+          {
+            "id": "inspect-registry",
+            "name": "Inspect registry",
+            "description": "Read the MCR registry API and explain its status.",
+            "tags": [
+              "registry"
+            ]
+          }
+        ]
+      },
+      "resources": [
+        "inference",
+        "registry"
+      ],
+      "invocations": []
+    }
+  ]
+}

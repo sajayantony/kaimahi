@@ -1,0 +1,26 @@
+{
+  "apiVersion": "kaimahi.dev/policy-application/v1alpha1",
+  "suiteDigest": "sha256:e21134c31b70f04a84ceb844fade2eb979bb11542bf773f6e3134712494acbbe",
+  "policyDigest": "sha256:cdf153060a3de713054868bf5e31b6e9b0034163022b52eb3fac0c022a0f4318",
+  "namespace": "suite-policy-example",
+  "adapter": "cilium-cpu-v1",
+  "gatewayImage": "ghcr.io/agentgateway/agentgateway@sha256:482921556876a503ad3675b29223b1897b63a316983e46797ff99ebf83a2a6a2",
+  "agents": {
+    "coordinator": {
+      "workload": "coordinator",
+      "runtime": "coordinator",
+      "image": "docker.io/library/python@sha256:cfe2e24a75302a15934d37c2d86412893c0aa934dc3a97cbb439d04c01890ca9"
+    },
+    "registry-reader": {
+      "workload": "registry-reader",
+      "runtime": "registry-reader",
+      "image": "docker.io/library/python@sha256:cfe2e24a75302a15934d37c2d86412893c0aa934dc3a97cbb439d04c01890ca9"
+    }
+  },
+  "model": {
+    "resource": "inference",
+    "workload": "cpu-model",
+    "model": "qwen3:0.6b",
+    "image": "docker.io/ollama/ollama@sha256:b86366bb528bbf7f1424435d165028497a5b69bf6ddb4fa5a87102e2b79f44fb"
+  }
+}
