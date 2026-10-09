@@ -39,8 +39,8 @@ checks.
 | `ax-harness/` | preview projector source only; no built image or kmx adapter | — | synthetic Python tests |
 | `plane/` | model bridge and ordinary budget administration | — | test fakes inside packages |
 | `k8s/` | embedded runtime/plane/observability artifacts | — | — |
-| `scripts/` | 7 (6 embedded in the binary, 1 operator) | 1 | 45 (checkers, release packaging, probes, CI fixtures, mutation specs) |
-| `docs/` | 51 tracked files; guides, direction, retirement records and assets | historical scenario records | maintainer and process docs |
+| `scripts/` | 7 (6 embedded in the binary, 1 operator) | 1 | 48 (checkers, release packaging, probes, CI fixtures, mutation specs) |
+| `docs/` | 52 tracked files; guides, direction, retirement records and assets | historical scenario records | maintainer and process docs |
 | `brand/` | 7 identity assets for repository and organization surfaces | — | its own checker |
 
 ## `cmd/` — installed CLI
@@ -60,12 +60,13 @@ Go test files but include non-Go data. The test-only kubectl executable under
 
 | Package or data directory | Non-test files | Class | What it is |
 |---|---|---|---|
-| `kmx/app` | 100 | Installed | Command orchestration, the offline AgentSuite validator entry point, the read-only Orka run source and console run view, the Orka lifecycle adapter, exact Kagent v0.10.2 create-only lifecycle adapter and online proof, agent bundle persistence, Orka lift/status/evaluation gates, safe retirement, Task execution and result retrieval, interactive Orka console, shared chat UI, host inference and native platform operations. The three Kagent non-test files are `create_kagent.go`, `kagent_create_online.go` and `runtime_kagent_lifecycle.go`; app also contains Kagent create and Orka-only bundle-refusal tests. |
 | `kmx/suitedeploy` | 2 | Scaffolding | Proposed internal full-suite resolver, build-output, execution, target-binding and deployment-adapter contracts, with immutable plan and gate matching tests; not wired into installed workflows. |
-| `kmx/agentsuite` | 12 | Installed | Strict JSON and JCS identities, OCI image-reference, image-layout, and content-layer validation, closed agent/tool-provider/composition/build-profile graph validation, callable Tool contracts, sandbox binding validation, provider-neutral sandbox build planning, and provider-neutral packing, CAS, and artifact push/pull contracts. |
 | `kmx/agentsuite/agentkit` | 3 | Installed | Experimental AgentKit adapter for the provider-neutral sandbox builder contract; uses AgentKit's Go packages to convert the selected agent and monolithic harness adapter into LLB plus OCI image configuration, manages a digest-pinned local BuildKit daemon when no endpoint override is supplied, and emits an OCI image-layout tar while explicitly reporting that the runtime base is not composed. |
-| `kmx/agentsuite/oras` | 6 | Installed | ORAS-backed deterministic directory push, validated directory extraction, manifest construction, validation materialization, target-bound artifact push/pull, and remote repository binding through the Docker credential store; registry configuration, authentication, and transport policy remain outside the portable AgentSuite contracts. |
-| `kmx/agentsuite/schema` | 7 | Checkout | Closed JSON Schema 2020-12 reference documents for suite, agent, ToolProvider and provider composition, build-profile, and Agent sandbox-binding records; published with the source checkout, not embedded in or loaded by the binary. |
+| `kmx/app` | 100 | Installed | Command orchestration, the offline AgentSuite validator entry point, registry-backed agent image lift, the read-only Orka run source and console run view, the Orka lifecycle adapter, exact Kagent v0.10.2 create-only lifecycle adapter and online proof, agent bundle persistence, Orka lift/status/evaluation gates, safe retirement, Task execution and result retrieval, interactive Orka console, shared chat UI, host inference and native platform operations. The three Kagent non-test files are `create_kagent.go`, `kagent_create_online.go` and `runtime_kagent_lifecycle.go`; app also contains Kagent create and Orka-only bundle-refusal tests. |
+| `kmx/agentsuite` | 14 | Installed | Strict JSON and JCS identities, OCI image-layout and content-layer validation, closed agent/tool-provider/composition/build-profile graph validation, callable Tool and image execution contracts, source-image declaration validation, suite deployment snapshots, sandbox build planning, and provider-neutral packing, CAS, and artifact push/pull contracts. |
+| `kmx/agentsuite/oras` | 8 | Installed | ORAS-backed deterministic directory push, validated directory extraction, manifest construction, validation materialization, target-bound artifact push/pull, built-image publication, verified platform image metadata resolution, and remote repository binding through the Docker credential store; registry configuration, authentication, and transport policy remain outside the portable AgentSuite contracts. |
+| `kmx/agentsuite/schema` | 9 | Checkout | Closed JSON Schema 2020-12 reference documents for suite, agent, ToolProvider and provider composition, build-profile, execution, image-deployment, and Agent sandbox-binding records; published with the source checkout, not embedded in or loaded by the binary. |
+| `kmx/imagelift` | 5 | Installed | Strict deployment environment decoding, deterministic standalone HTTP agent Deployment/Service planning, single-image and suite deployment adapters, target and ownership checks, preconditioned reconciliation, and partial deployment evidence. |
 | `kmx/agentsuite/testdata/minimal` | 1 | Scaffolding | Root manifest for the checked-in minimal conformant AgentSuite layout used by package and CLI validation tests. |
 | `kmx/agentsuite/testdata/minimal/agents` | 1 | Scaffolding | Minimal writer agent manifest. |
 | `kmx/agentsuite/testdata/minimal/build-profiles` | 1 | Scaffolding | Minimal exact Linux build profile with pinned example descriptors. |
@@ -97,8 +98,8 @@ Go test files but include non-Go data. The test-only kubectl executable under
 | `kmx/app/testdata/bundle-format/v0.3.0/eval` | 1 | Scaffolding | First bundle-writer evaluation case. |
 | `kmx/runview` | 1 | Installed | In-memory, runtime-neutral run, Task, agent, hand-off and missing-evidence presentation types. |
 | `kmx/runview/orka` | 1 | Installed | Bounded Orka Task lineage, event and trace reader with caller-scoped reads and safe projection. |
-| `kmx/runtime` | 10 | Installed | Platform-neutral adapter/session and lifecycle contracts, identities, capabilities, events, bundle digests, registry, portable Orka/Kagent authoring union, target bindings and evaluation cases. `prepared.go` checks behavior before target-bound rendering; `kagent_bindings.go` adds closed creation-target bindings. Only Orka is registered for chat/discovery. |
 | `kmx/lifecycle` | 4 | Scaffolding | Experimental internal platform, AgentSuite, OCI publication and runtime ports; runtime-native documents/bundles, deploy options, recovery interfaces and receipt factories behind the public `pkg/kmx` workflows. |
+| `kmx/runtime` | 11 | Installed | Platform-neutral adapter/session and lifecycle contracts, whole-suite deployment planning and orchestration, identities, capabilities, events, bundle digests, registry, portable Orka/Kagent authoring union, target bindings and evaluation cases. `prepared.go` checks behavior before target-bound rendering; `kagent_bindings.go` adds closed creation-target bindings. Only Orka is registered for chat/discovery. |
 | `kmx/admin` | 6 | Installed | Model-plane admin client, ordinary caps, credentials and model ledger views. |
 | `kmx/scaffold` | 9 | Installed | Orka authoring, exact Kagent v0.10.2 review scaffolding in `kagent.go`, model/migration artifacts and shared YAML/name helpers. |
 | `kmx/orkaschema` | 3 | Installed | Structural schema validator, attribution and upstream licence. |
@@ -246,9 +247,9 @@ manifests, and the nine model presets. All were objects of the legacy runtime
 applied by the retired installer; nothing left in kmx reads or applies one. Plane and
 observability manifests remain part of clone-free deployment.
 
-## `scripts/` — 53 tracked files, three different jobs
+## `scripts/` — 56 tracked files, three different jobs
 
-**Reference coverage:** 43 of the 53 are named by something outside themselves,
+**Reference coverage:** 46 of the 56 are named by something outside themselves,
 and the ten `scripts/mutations/*.json` are named by nothing at all — the
 mutation harness discovers them by glob. Map/checker/board mentions are not
 caller evidence. Textual references are not necessarily invocations.
@@ -260,7 +261,7 @@ caller evidence. Textual references are not necessarily invocations.
 | **Demonstration** | 1 | `demo-hello-to-governed.sh` |
 | **Scaffolding** — checkers, self-tests and release packaging | 20 | the eleven `check-*` files, `comment-history-go.go`, `kube-guard-test.sh`, `install-sh-test.sh`, `release-notes.py`, `homebrew-formula.py`, `test_model_fixtures.py`, `test_demo_hello_to_governed.py`, `test_orka_k8s_tool.py`, `test_owner_model_client.py` |
 | **Scaffolding** — live-cluster probes | 7 | `*-probe.sh`, minus the embedded one, plus `seam-tls.sh` |
-| **Scaffolding** — CI fixtures | 7 | `scripts/ci/`: `plain-model.sh`, `plain-model-server.py`, `synthetic-model.sh`, `owner-model-client.sh`, `owner-model-client.py`, `orka-tool-model.py`, `orka-tool-model.yaml` |
+| **Scaffolding** — CI fixtures | 10 | `scripts/ci/`: `plain-model.sh`, `plain-model-server.py`, `synthetic-model.sh`, `owner-model-client.sh`, `owner-model-client.py`, `orka-tool-model.py`, `orka-tool-model.yaml`, `suite-lift-smoke.py`, `suite-model.py`; `scripts/sample-suite.py` generates the suite fixture |
 | **Scaffolding** — mutation specifications | 10 | `scripts/mutations/*.json` |
 | **Scaffolding** — legacy-runtime scanner's approved exemptions | 1 | `legacy-runtime-allowlist.json` |
 
@@ -289,15 +290,15 @@ throwaway CA and a documentation-range address routed over kind's network,
 so a public-looking hosted upstream can be dialed without a hosted account.
 CI holds no hosted credential.
 
-## `docs/` — 51 tracked files, guides and retirement records
+## `docs/` — 52 tracked files, guides and retirement records
 
-**Guides and index (24):** `README.md`, `getting-started.md`, `kmx.md`,
+**Guides and index (25):** `README.md`, `getting-started.md`, `kmx.md`,
 `aks.md`, `models.md`, `spend.md`,
 `approvals.md`, `egress.md`, `hosted-upstreams.md`, `identity.md`,
 `operations.md`, `releases.md`, `workflows.md`, `FAQ.md`,
 `migrate.md`, `orka.md`, `copilot-inference.md`, `interactive-chat.md`,
 `interactive-lift.md`, `orka-k8s-tool.md`, `bundle-format.md`,
-`agentsuite-spec.md`, `suite-deployment-contracts.md` and `runtime-adapters.md`. Retired tool/workflow pages are pointers, not
+`agentsuite-spec.md`, `suite-deployment-contracts.md`, `agentsuite-image-lift.md` and `runtime-adapters.md`. Retired tool/workflow pages are pointers, not
 operating instructions for deleted code.
 
 **Retired scenario/integration records (5):** `inbound.md`, `slack.md`,

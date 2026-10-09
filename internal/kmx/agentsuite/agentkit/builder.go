@@ -20,6 +20,8 @@ const OCIArchiveMediaType = "application/vnd.oci.image.layout.v1.tar"
 
 // Options bind the provider-neutral build plan to AgentKit and BuildKit.
 type Options struct {
+	SuiteReference  string
+	SuiteDigest     string
 	ModelBaseURL    string
 	ModelAPIKeyEnv  string
 	Runtime         string
@@ -82,12 +84,29 @@ func (b *Builder) Build(
 	cfg := b.agentConfig(plan)
 	agent := effective.FromConfig(&cfg, string(plan.Instructions))
 	platform := plan.Composition.Platform
+	label := ""
+	if b.options.SuiteReference != "" {
+		if plan.BuildProfile.Execution == nil {
+			return agentsuite.BuildResult{}, errors.New("liftable image requires build profile execution contract")
+		}
+		var err error
+		label, err = agentsuite.EncodeImageDeployment(agentsuite.ImageDeployment{
+			SchemaVersion: agentsuite.SpecVersion, MediaType: agentsuite.ImageDeploymentMediaType,
+			SuiteReference: b.options.SuiteReference, SuiteDigest: b.options.SuiteDigest,
+			Agent: plan.Agent.ID, Platform: platform, CompositionDigest: plan.CompositionDigest,
+			BuildProfile: plan.BuildProfile.ID, Execution: *plan.BuildProfile.Execution,
+		})
+		if err != nil {
+			return agentsuite.BuildResult{}, err
+		}
+	}
 	if err := b.options.exporter.ExportOCI(ctx, agentImage{
-		Agent:        agent,
-		AdapterRef:   plan.Harness.ImageRef,
-		OS:           platform.OS,
-		Architecture: platform.Architecture,
-		SourceEpoch:  plan.BuildProfile.SourceEpoch,
+		DeploymentLabel: label,
+		Agent:           agent,
+		AdapterRef:      plan.Harness.ImageRef,
+		OS:              platform.OS,
+		Architecture:    platform.Architecture,
+		SourceEpoch:     plan.BuildProfile.SourceEpoch,
 	}, dst); err != nil {
 		return agentsuite.BuildResult{}, fmt.Errorf("build experimental AgentKit image: %w", err)
 	}

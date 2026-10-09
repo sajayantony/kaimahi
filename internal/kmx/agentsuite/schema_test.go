@@ -246,6 +246,19 @@ func compileReferenceSchema(t *testing.T, name string) *jsonschema.Schema {
 		t.Fatal(err)
 	}
 	compiler := jsonschema.NewCompiler()
+	if name == "build-profile.schema.json" || name == "image-deployment.schema.json" {
+		execution, err := os.ReadFile(filepath.Join("schema", "execution.schema.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var definition any
+		if err := json.Unmarshal(execution, &definition); err != nil {
+			t.Fatal(err)
+		}
+		if err := compiler.AddResource("https://kaimahi.dev/schemas/agentsuite/v1/execution.schema.json", definition); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := compiler.AddResource(name, resource); err != nil {
 		t.Fatal(err)
 	}

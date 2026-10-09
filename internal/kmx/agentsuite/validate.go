@@ -1008,6 +1008,9 @@ func validateToolProviderComposition(composition ToolProviderComposition) error 
 
 func validateBuildProfile(profile BuildProfile) error {
 	var errs []error
+	if profile.Execution != nil {
+		errs = append(errs, ValidateExecutionContract(*profile.Execution))
+	}
 	if profile.SchemaVersion != SpecVersion || profile.MediaType != MediaTypeBuildProfile {
 		errs = append(errs, errors.New("unsupported schemaVersion or mediaType"))
 	}

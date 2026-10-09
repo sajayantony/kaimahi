@@ -273,12 +273,13 @@ type ToolProviderComposition struct {
 }
 
 type BuildProfile struct {
-	SchemaVersion string          `json:"schemaVersion"`
-	MediaType     string          `json:"mediaType"`
-	ID            string          `json:"id"`
-	RuntimeBase   []PlatformImage `json:"runtimeBase"`
-	Harness       []PlatformImage `json:"harness"`
-	SourceEpoch   int64           `json:"sourceEpoch"`
+	Execution     *ExecutionContract `json:"execution,omitempty"`
+	SchemaVersion string             `json:"schemaVersion"`
+	MediaType     string             `json:"mediaType"`
+	ID            string             `json:"id"`
+	RuntimeBase   []PlatformImage    `json:"runtimeBase"`
+	Harness       []PlatformImage    `json:"harness"`
+	SourceEpoch   int64              `json:"sourceEpoch"`
 }
 
 type SandboxBinding struct {

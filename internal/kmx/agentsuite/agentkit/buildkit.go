@@ -20,11 +20,12 @@ import (
 )
 
 type agentImage struct {
-	Agent        effective.Agent
-	AdapterRef   string
-	OS           string
-	Architecture string
-	SourceEpoch  int64
+	DeploymentLabel string
+	Agent           effective.Agent
+	AdapterRef      string
+	OS              string
+	Architecture    string
+	SourceEpoch     int64
 }
 
 type ociExporter interface {
@@ -158,6 +159,9 @@ func agentBuildDefinition(ctx context.Context, image agentImage, platform *specs
 	state, imageConfig, err := agentllb.Agentkit2LLB(image.Agent, image.AdapterRef, platform)
 	if err != nil {
 		return nil, nil, fmt.Errorf("convert AgentKit agent to LLB: %w", err)
+	}
+	if image.DeploymentLabel != "" {
+		imageConfig.Config.Labels["org.agentsuite.image-deployment"] = image.DeploymentLabel
 	}
 	definition, err := state.Marshal(ctx)
 	if err != nil {

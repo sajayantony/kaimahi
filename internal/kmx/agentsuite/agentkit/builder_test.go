@@ -239,6 +239,30 @@ func TestBuildRequiresModelURL(t *testing.T) {
 	}
 }
 
+func TestBuildCarriesLiftRecordFromExecutionProfile(t *testing.T) {
+	plan := minimalPlan()
+	plan.BuildProfile.ID = "default"
+	plan.CompositionDigest = testDigest
+	plan.BuildProfile.Execution = &agentsuite.ExecutionContract{Kind: agentsuite.ExecutionHTTPV1, Protocol: "openai-chat-v1", Port: 8080, HealthPath: "/healthz", Inputs: []agentsuite.ExecutionInput{}}
+	builder := New(Options{ModelBaseURL: "https://models.example/v1", SuiteReference: "registry.example/suite@" + testDigest, SuiteDigest: testDigest, exporter: ociExporterFunc(func(_ context.Context, image agentImage, _ io.Writer) error {
+		record, err := agentsuite.DecodeImageDeployment([]byte(image.DeploymentLabel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if record.Agent != "writer" || record.CompositionDigest != testDigest || record.SuiteDigest != testDigest {
+			t.Fatalf("record=%+v", record)
+		}
+		return nil
+	})})
+	if _, err := builder.Build(t.Context(), plan, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	plan.BuildProfile.Execution = nil
+	if _, err := builder.Build(t.Context(), plan, io.Discard); err == nil {
+		t.Fatal("unmarked profile accepted for liftable build")
+	}
+}
+
 func TestBuildRejectsUnsafeModelURLs(t *testing.T) {
 	for _, value := range []string{
 		"https://models.example/v1?api-key=secret",

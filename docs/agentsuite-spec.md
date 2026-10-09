@@ -938,6 +938,14 @@ deploy the resulting image.
 
 ## 11. Build profiles
 
+An optional `execution` object declares the built image's invocation contract
+and named runtime inputs. The experimental `kubernetes-http-v1` contract is
+defined in [AgentSuite image lift](agentsuite-image-lift.md#execution-and-image-contract)
+and its closed [schema](../internal/kmx/agentsuite/schema/execution.schema.json).
+A consumer MUST reject an execution contract it does not support. Execution
+metadata is distinct from native OS/CPU compatibility and from destination
+configuration. It contributes to the build-profile identity.
+
 A build profile MUST contain non-empty `runtimeBase` and `harness` arrays and
 one positive, profile-wide `sourceEpoch`. Each array contains one image entry
 per platform:
