@@ -20,6 +20,7 @@ and real local deny-all probes. Not production governance, full A2A conformance,
 <a href="../agentsuite-governance-spike.md">Component plan, evidence and limitations</a>.</p>
 <p>Tracking: <a href="https://github.com/sajayantony/kaimahi/issues/2">sajayantony/kaimahi#2</a>.</p>
 <p><a href="../../agentsuite/policy/examples/agentgateway/README.md">Runnable MCR allowlist and native A2A gateway samples</a>.</p>
+<p><a href="../../agentsuite/policy/examples/README.md">All samples: terse implementation and run guide</a>.</p>
 
 <h2>Object flow and trust boundaries</h2>
 <div class="flow">
@@ -66,7 +67,7 @@ enforcement probes, drift and revocation. A JSON plan is not an attestation.</p>
 <tr><td>Filesystem</td><td>Read-only root + Landlock ABI &gt;= 3 + mutation syscall denial</td><td>Root/temp writes fail with EROFS; shared-memory/device write opens with EACCES; mutation calls with EPERM.</td></tr>
 <tr><td>New outbound calls</td><td>seccomp denies connect and explicitly addressed datagrams</td><td>Direct model/tool/A2A, IPv6, UDP, DNS datagrams, Unix sockets and child calls denied. Inbound replies remain possible.</td></tr>
 <tr><td>Gateway</td><td>agentgateway require: false</td><td>Four HTTP paths return 403; positive route returns 200; denied requests add zero backend hits.</td></tr>
-<tr><td>Hostname/skill allowlists</td><td>Gateway HTTPS authority projection implemented; full sandbox and skill grants pending</td><td>MCR returns 200 through CONNECT; unlisted SNI, forged Host, wrong port and HTTP are rejected. The full sandbox compiler still fails closed on allowlists.</td></tr>
+<tr><td>Hostname/skill allowlists</td><td>Gateway projection and bounded Cilium/CPU example implemented; generic grants pending</td><td>MCR returns 200; unauthorized destinations/routes and direct bypass are rejected in the CPU example. The full deny-all compiler still rejects allowlists.</td></tr>
 <tr><td>Native runtimes</td><td>Orka / kagent / Azure / gVisor: future adapters</td><td>No equivalence or deployment claim. Inspektor Gadget is an observation source, not enforcement proof.</td></tr>
 </tbody>
 </table>
@@ -81,6 +82,19 @@ curl.exe --noproxy "" --proxy http://127.0.0.1:18080 https://mcr.microsoft.com/v
 <code>mcr.microsoft.com:443</code> backend and an explicit list of unenforced
 controls. TLS passthrough cannot inspect URL paths, methods, caller claims or
 A2A skill operations. A bare curl without the proxy is not governed.</p>
+<h2>Full local example: two CPU-backed agents</h2>
+<pre>coordinator --&gt; its gateway --&gt; registry-reader --&gt; its gateway --&gt; MCR
+                       \                                 \
+                        +--------&gt; CPU Ollama &lt;-----------+</pre>
+<p><strong>Cilium</strong> confines each agent to its own gateway.
+<strong>Agentgateway</strong> permits fixed inference and single-skill endpoints.
+<strong>GatewaySandboxProjection</strong> supplies Landlock/seccomp filesystem
+controls, with TCP confinement explicitly delegated to the network layer.
+Agentgateway is independent of Cilium; no Istio is used.</p>
+<p>Observed: MCR HTTP 200, real model tokens from both agents, zero VRAM,
+23 passing probe groups and 44 additional Cilium egress policy drops.
+The bounded workflow uses A2A REST-shaped messages; it is not general A2A
+authorization, protocol conformance or an installed lift adapter.</p>
 <p class="notice"><strong>Process-tree boundary:</strong> Landlock inheritance does not automatically cover
 Kubernetes exec/debug tasks or unrelated sidecars. Admission, RBAC, trusted launchers and node/profile
 verification remain required before production use.</p>

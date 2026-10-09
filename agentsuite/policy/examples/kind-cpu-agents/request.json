@@ -1,0 +1,7 @@
+{
+  "message": {
+    "messageId": "registry-check-example",
+    "role": "ROLE_USER",
+    "parts": [{"text": "Check whether the MCR registry API is reachable and summarize the result."}]
+  }
+}

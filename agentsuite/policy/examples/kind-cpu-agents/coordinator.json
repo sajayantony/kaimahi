@@ -1,0 +1,20 @@
+{
+  "apiVersion": "agentsuite.dev/policy/v1alpha1",
+  "agent": "coordinator",
+  "capabilities": {
+    "protocol": "a2a", "version": "1.0.0",
+    "skills": [{"id": "coordinate", "name": "Coordinate", "description": "Delegate a registry check and summarize its result.", "tags": ["registry"]}]
+  },
+  "filesystem": {"write": "deny"},
+  "network": {
+    "default": "deny",
+    "allow": [
+      {"scheme": "http", "host": "cpu-model", "port": 11434},
+      {"scheme": "http", "host": "registry-reader", "port": 8080}
+    ]
+  },
+  "invocations": {
+    "default": "deny",
+    "allow": [{"agent": "registry-reader", "skills": ["inspect-registry"]}]
+  }
+}

@@ -70,7 +70,7 @@ listener inventory, Orka architecture or the project's future shape.
 ## Maintainer references
 
 - [AgentSuite governance spike](agentsuite-governance-spike.md): portable policy objects, fail-closed translation, kind/Podman denial probes and the component plan; [offline HTML object map](assets/agentsuite-governance.html).
-- [Agentgateway samples](../agentsuite/policy/examples/agentgateway/README.md): portable MCR HTTPS allow request, generated CONNECT/SNI policy, native A2A denial and runnable curl checks.
+- [Policy samples](../agentsuite/policy/examples/README.md): terse guide to deny-all, MCR/A2A gateways and CPU-backed agents with Cilium bypass prevention.
 
 - [Development](development.md): source boundaries, verification and operational traps.
 - [Repository map](repository-map.md): where the retained files belong.

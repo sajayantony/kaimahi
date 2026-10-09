@@ -38,8 +38,12 @@ func TestPolicyStrictDecodingAndSchema(t *testing.T) {
 	if err := validate(raw); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"allow-mcr.json", "a2a-peer-request.json"} {
-		sample, err := os.ReadFile(filepath.Join(root, "testdata", name))
+	for _, name := range []string{
+		filepath.Join("testdata", "allow-mcr.json"), filepath.Join("testdata", "a2a-peer-request.json"),
+		filepath.Join("examples", "kind-cpu-agents", "coordinator.json"),
+		filepath.Join("examples", "kind-cpu-agents", "registry-reader.json"),
+	} {
+		sample, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -1,5 +1,7 @@
 # Agentgateway policy samples
 
+[All policy samples and enforcement layers](../README.md).
+
 These are **gateway-only samples**, not whole-agent enforcement. The language
 currently expresses exact network authorities and A2A capability/peer requests.
 It does not yet cover all agentgateway policies or full A2A authorization.

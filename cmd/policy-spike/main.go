@@ -25,6 +25,7 @@ func main() {
 func run() error {
 	policyPath := flag.String("policy", "", "experimental policy JSON")
 	gatewayEgress := flag.Bool("gateway-egress", false, "project HTTPS authorities only; does not enforce the whole policy")
+	gatewaySandbox := flag.Bool("gateway-sandbox", false, "project filesystem controls only; requires external gateway and network enforcement")
 	recordPath := flag.String("record", "", "image execution record JSON (not registry-verified)")
 	environmentPath := flag.String("environment", "", "explicit lift environment JSON")
 	image := flag.String("image", "", "digest-pinned image reference")
@@ -43,9 +44,19 @@ func run() error {
 	}
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	if *gatewayEgress {
+	if *gatewayEgress || *gatewaySandbox {
+		if *gatewayEgress && *gatewaySandbox {
+			return errors.New("choose one projection mode")
+		}
 		if *recordPath != "" || *environmentPath != "" || *image != "" || *commandJSON != "" {
-			return errors.New("-gateway-egress must not be combined with deployment flags")
+			return errors.New("projection modes must not be combined with deployment flags")
+		}
+		if *gatewaySandbox {
+			projection, err := governance.ProjectGatewaySandbox(document)
+			if err != nil {
+				return err
+			}
+			return encoder.Encode(projection)
 		}
 		projection, err := governance.ProjectGatewayEgress(document)
 		if err != nil {

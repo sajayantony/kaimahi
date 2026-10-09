@@ -1,0 +1,17 @@
+{
+  "apiVersion": "agentsuite.dev/policy/v1alpha1",
+  "agent": "registry-reader",
+  "capabilities": {
+    "protocol": "a2a", "version": "1.0.0",
+    "skills": [{"id": "inspect-registry", "name": "Inspect registry", "description": "Read the MCR registry API and explain its status.", "tags": ["registry"]}]
+  },
+  "filesystem": {"write": "deny"},
+  "network": {
+    "default": "deny",
+    "allow": [
+      {"scheme": "http", "host": "cpu-model", "port": 11434},
+      {"scheme": "https", "host": "mcr.microsoft.com", "port": 443}
+    ]
+  },
+  "invocations": {"default": "deny", "allow": []}
+}

@@ -40,7 +40,7 @@ checks.
 | `ax-harness/` | preview projector source only; no built image or kmx adapter | — | synthetic Python tests |
 | `plane/` | model bridge and ordinary budget administration | — | test fakes inside packages |
 | `k8s/` | embedded runtime/plane/observability artifacts | — | — |
-| `scripts/` | 7 (6 embedded in the binary, 1 operator) | 1 | 52 (checkers, release packaging, probes, CI fixtures, mutation specs) |
+| `scripts/` | 7 (6 embedded in the binary, 1 operator) | 1 | 55 (checkers, release packaging, probes, CI fixtures, mutation specs) |
 | `docs/` | 54 tracked files; guides, direction, retirement records and assets | historical scenario records | maintainer and process docs |
 | `brand/` | 7 identity assets for repository and organization surfaces | — | its own checker |
 
@@ -69,7 +69,7 @@ Go test files but include non-Go data. The test-only kubectl executable under
 | `kmx/agentsuite/oras` | 8 | Installed | ORAS-backed deterministic directory push, validated directory extraction, manifest construction, validation materialization, target-bound artifact push/pull, built-image publication, verified platform image metadata resolution, and remote repository binding through the Docker credential store; registry configuration, authentication, and transport policy remain outside the portable AgentSuite contracts. |
 | `kmx/agentsuite/schema` | 9 | Checkout | Closed JSON Schema 2020-12 reference documents for suite, agent, ToolProvider and provider composition, build-profile, execution, image-deployment, and Agent sandbox-binding records; published with the source checkout, not embedded in or loaded by the binary. |
 | `kmx/imagelift` | 6 | Installed | Strict deployment environment decoding, deterministic standalone HTTP agent Deployment/Service planning, single-image and suite deployment adapters, target and ownership checks, preconditioned reconciliation, and partial deployment evidence. Separate opt-in policy spike rendering leaves the installed lift path unchanged. |
-| `kmx/governance` | 3 | Scaffolding | Experimental deny-all compiler, embedded Python Landlock launcher and scoped HTTPS gateway projector; emits content-addressed seccomp and agentgateway artifacts, not an installed governance authority. |
+| `kmx/governance` | 4 | Scaffolding | Experimental deny-all compiler, embedded Python Landlock launcher, HTTPS gateway and filesystem-only projections; not an installed governance authority. |
 | `kmx/agentsuite/testdata/minimal` | 1 | Scaffolding | Root manifest for the checked-in minimal conformant AgentSuite layout used by package and CLI validation tests. |
 | `kmx/agentsuite/testdata/minimal/agents` | 1 | Scaffolding | Minimal writer agent manifest. |
 | `kmx/agentsuite/testdata/minimal/build-profiles` | 1 | Scaffolding | Minimal exact Linux build profile with pinned example descriptors. |
@@ -259,9 +259,9 @@ manifests, and the nine model presets. All were objects of the legacy runtime
 applied by the retired installer; nothing left in kmx reads or applies one. Plane and
 observability manifests remain part of clone-free deployment.
 
-## `scripts/` — 60 tracked files, three different jobs
+## `scripts/` — 63 tracked files, three different jobs
 
-**Reference coverage:** 50 of the 60 are named by something outside themselves,
+**Reference coverage:** 53 of the 63 are named by something outside themselves,
 and the ten `scripts/mutations/*.json` are named by nothing at all — the
 mutation harness discovers them by glob. Map/checker/board mentions are not
 caller evidence. Textual references are not necessarily invocations.
@@ -271,9 +271,9 @@ caller evidence. Textual references are not necessarily invocations.
 | **Installed** — embedded in kmx | 6 | `aks-up.sh`, `aks-down.sh`, `plane-deploy.sh`, `netpol-probe.sh`, `kube-guard.sh`, `orka-k8s-tool.py` |
 | **Checkout** — operator scripts | 1 | `plane-pods.sh` |
 | **Demonstration** | 1 | `demo-hello-to-governed.sh` |
-| **Scaffolding** — checkers, self-tests and release packaging | 20 | the eleven `check-*` files, `comment-history-go.go`, `kube-guard-test.sh`, `install-sh-test.sh`, `release-notes.py`, `homebrew-formula.py`, `test_model_fixtures.py`, `test_demo_hello_to_governed.py`, `test_orka_k8s_tool.py`, `test_owner_model_client.py` |
+| **Scaffolding** — checkers, self-tests and release packaging | 21 | the eleven `check-*` files, `comment-history-go.go`, `kube-guard-test.sh`, `install-sh-test.sh`, `release-notes.py`, `homebrew-formula.py`, `test_model_fixtures.py`, `test_demo_hello_to_governed.py`, `test_orka_k8s_tool.py`, `test_owner_model_client.py`, `test_policy_cpu_agent.py` |
 | **Scaffolding** — live-cluster probes | 7 | `*-probe.sh`, minus the embedded one, plus `seam-tls.sh` |
-| **Scaffolding** — CI fixtures | 14 | `scripts/ci/`: `plain-model.sh`, `plain-model-server.py`, `synthetic-model.sh`, `owner-model-client.sh`, `owner-model-client.py`, `orka-tool-model.py`, `orka-tool-model.yaml`, `suite-lift-smoke.py`, `suite-model.py`, `policy-smoke.ps1`, `policy-backend.py`, `policy-probe.py`, `gateway-policy-smoke.ps1`; `scripts/sample-suite.py` generates the suite fixture |
+| **Scaffolding** — CI fixtures | 16 | `scripts/ci/`: `plain-model.sh`, `plain-model-server.py`, `synthetic-model.sh`, `owner-model-client.sh`, `owner-model-client.py`, `orka-tool-model.py`, `orka-tool-model.yaml`, `suite-lift-smoke.py`, `suite-model.py`, `policy-smoke.ps1`, `policy-backend.py`, `policy-probe.py`, `gateway-policy-smoke.ps1`, `policy-cpu-smoke.ps1`, `policy-cpu-agent.py`; `scripts/sample-suite.py` generates the suite fixture |
 | **Scaffolding** — mutation specifications | 10 | `scripts/mutations/*.json` |
 | **Scaffolding** — legacy-runtime scanner's approved exemptions | 1 | `legacy-runtime-allowlist.json` |
 
