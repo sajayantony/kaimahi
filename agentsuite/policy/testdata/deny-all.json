@@ -1,0 +1,14 @@
+{
+  "apiVersion": "agentsuite.dev/policy/v1alpha1",
+  "agent": "policy-probe",
+  "capabilities": {
+    "protocol": "a2a",
+    "version": "1.0.0",
+    "skills": [
+      {"id": "summarize", "name": "Summarize", "description": "Summarize provided text without tools.", "tags": ["text"]}
+    ]
+  },
+  "filesystem": {"write": "deny"},
+  "network": {"default": "deny", "allow": []},
+  "invocations": {"default": "deny", "allow": []}
+}

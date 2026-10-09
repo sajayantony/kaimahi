@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgentSuite policy objects and enforcement boundaries</title>
+<style>
+:root{color-scheme:light dark;font:16px/1.55 system-ui,sans-serif}
+body{max-width:1100px;margin:2rem auto;padding:0 1.3rem}
+h1,h2{line-height:1.2}code{font-size:.9em}a{color:#438fe8}
+.notice{border-left:5px solid #c48320;padding:.8rem 1rem;background:#8881}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1.5rem 0}
+.card{border:1px solid #8888;border-radius:8px;padding:1rem}
+.implemented{border-top:5px solid #278f65}.proposed{border-top:5px dashed #c48320}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #8885;padding:.6rem;vertical-align:top}
+pre{overflow:auto;padding:1rem;background:#8881}small{color:#888}
+</style>
+<h1>AgentSuite: policy is not capability</h1>
+<p class="notice"><strong>Experimental spike.</strong> Provider-neutral intent, target-specific translation,
+and real local deny-all probes. Not production governance, full A2A conformance, or a certified sandbox.
+<a href="../agentsuite-governance-spike.md">Component plan, evidence and limitations</a>.</p>
+<p>Tracking: <a href="https://github.com/sajayantony/kaimahi/issues/2">sajayantony/kaimahi#2</a>.</p>
+
+<h2>Object flow and trust boundaries</h2>
+<div class="flow">
+<article class="card implemented"><h3>1. Author intent</h3>
+<code>policy.Document</code><p>Agent identity, A2A advertisement, filesystem, network and invocation requests.</p>
+<strong>Author cannot grant authority.</strong></article>
+<article class="card proposed"><h3>2. Operator authority</h3>
+<code>PolicyBinding</code><p>Proposed: intersect requested policy with organization ceilings and approved
+destination/principal grants. Bind exact digests and validity.</p></article>
+<article class="card implemented"><h3>3. Compile at lift</h3>
+<code>governance.Plan</code><p>Exact policy/profile identities, launcher, native controls and bounded coverage.
+Unsupported required controls return an error, not a weaker plan.</p></article>
+<article class="card implemented"><h3>4. Runtime execution</h3>
+<code>imagelift.Plan</code><p>Policy-bound PodSpec; read-only root, no writable temp volume,
+Landlock launcher, seccomp profile and eligible-node selector.</p></article>
+<article class="card proposed"><h3>5. Governance evidence</h3>
+<code>ActivationReceipt</code><p>Proposed: approval, live resource identities, compiler/runtime revision,
+enforcement probes, drift and revocation. A JSON plan is not an attestation.</p></article>
+</div>
+
+<h2>Portable objects implemented in this spike</h2>
+<table>
+<thead><tr><th>Object</th><th>Essential fields</th><th>What it does not mean</th></tr></thead>
+<tbody>
+<tr><td>Capabilities / Skill</td><td>protocol, version, skills: id, name, description, tags</td><td>A2A advertisement input is neither a full AgentCard nor an invocation grant.</td></tr>
+<tr><td>Filesystem</td><td>write: deny</td><td>No temp/cache exception; stdout/stderr and accepted socket replies remain usable.</td></tr>
+<tr><td>Network / Destination</td><td>default: deny; allow: scheme, DNS host, port</td><td>No implied DNS/model exception. URL paths, IP literals and wildcards are not supported.</td></tr>
+<tr><td>Invocations / Invocation</td><td>default: deny; allow: peer agent, skill IDs</td><td>Requested peer/skill permissions require independent operator authorization.</td></tr>
+</tbody>
+</table>
+<pre>{
+  "apiVersion": "agentsuite.dev/policy/v1alpha1",
+  "agent": "policy-probe",
+  "capabilities": {"protocol": "a2a", "version": "1.0.0", "skills": []},
+  "filesystem": {"write": "deny"},
+  "network": {"default": "deny", "allow": []},
+  "invocations": {"default": "deny", "allow": []}
+}</pre>
+
+<h2>Enforcement is layered</h2>
+<table>
+<thead><tr><th>Layer</th><th>Local implementation</th><th>Evidence / limit</th></tr></thead>
+<tbody>
+<tr><td>Filesystem</td><td>Read-only root + Landlock ABI &gt;= 3 + mutation syscall denial</td><td>Root/temp writes fail with EROFS; shared-memory/device write opens with EACCES; mutation calls with EPERM.</td></tr>
+<tr><td>New outbound calls</td><td>seccomp denies connect and explicitly addressed datagrams</td><td>Direct model/tool/A2A, IPv6, UDP, DNS datagrams, Unix sockets and child calls denied. Inbound replies remain possible.</td></tr>
+<tr><td>Gateway</td><td>agentgateway require: false</td><td>Four HTTP paths return 403; positive route returns 200; denied requests add zero backend hits.</td></tr>
+<tr><td>Hostname/skill allowlists</td><td>Represented, not implemented</td><td>Compiler rejects nonempty lists. No silent widening to domain-only or network-only authorization.</td></tr>
+<tr><td>Native runtimes</td><td>Orka / kagent / Azure / gVisor: future adapters</td><td>No equivalence or deployment claim. Inspektor Gadget is an observation source, not enforcement proof.</td></tr>
+</tbody>
+</table>
+<p class="notice"><strong>Process-tree boundary:</strong> Landlock inheritance does not automatically cover
+Kubernetes exec/debug tasks or unrelated sidecars. Admission, RBAC, trusted launchers and node/profile
+verification remain required before production use.</p>
+<h2>Components to update next</h2>
+<p>Spec graph and canonical identity &rarr; policy intersection and operator binding &rarr; whole-suite
+prepare/inspect/deploy &rarr; runtime capability negotiation &rarr; identity-bound gateway and sandbox
+adapters &rarr; activation receipts, drift/revocation and conformance tests.</p>
+<p>Reuse the existing lifecycle ports. Do not restore the retired custom governance plane or turn model
+metering into a general authorizer.</p>
+<footer><small>Offline, self-contained HTML. No scripts, telemetry, external fonts or runtime dependencies.
+Green borders: implemented spike objects. Dashed amber borders: proposed components.</small></footer>
+</html>

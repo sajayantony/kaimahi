@@ -69,6 +69,8 @@ listener inventory, Orka architecture or the project's future shape.
 
 ## Maintainer references
 
+- [AgentSuite governance spike](agentsuite-governance-spike.md): portable policy objects, fail-closed translation, kind/Podman denial probes and the component plan; [offline HTML object map](assets/agentsuite-governance.html).
+
 - [Development](development.md): source boundaries, verification and operational traps.
 - [Repository map](repository-map.md): where the retained files belong.
 - [Entry-point principles](entry-point-principles.md): delegation, reviewable artifacts and ownership.

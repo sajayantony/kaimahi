@@ -4,6 +4,11 @@
 **Version:** `1.0.0-draft`
 **Last updated:** October 8, 2026
 
+**Experimental governance work:** [policy objects, local deny-all evidence and
+component plan](agentsuite-governance-spike.md). That standalone proposal does
+not change this draft's required object graph or imply policy enforcement by
+existing suite consumers.
+
 ## Abstract
 
 AgentSuite is a portable, content-addressed definition of one or more related
