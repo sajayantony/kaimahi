@@ -12,12 +12,20 @@ const sourceRef = process.env.GITHUB_SHA || 'main'
 const localAgentSuite = process.env.KMX_DOCS_WITH_AGENTSUITE !== '0' && existsSync(path.join(repositoryRoot, 'agentsuite', 'spec.md'))
 const agentSuiteDocsURL = process.env.KMX_AGENTSUITE_DOCS_URL || `${repositoryURL}/issues/491`
 
+function markdownPages(directory: string, prefix = 'docs'): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const relative = `${prefix}/${entry.name}`
+    if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+      return markdownPages(path.join(directory, entry.name), relative)
+    }
+    return entry.isFile() && entry.name.endsWith('.md') ? [relative] : []
+  })
+}
+
 const sitePages = new Set([
   'README.md',
   ...(localAgentSuite ? ['agentsuite/spec.md'] : []),
-  ...readdirSync(path.join(repositoryRoot, 'docs'), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => `docs/${entry.name}`)
+  ...markdownPages(path.join(repositoryRoot, 'docs'))
 ])
 
 /** Return the repository-relative Markdown path used to resolve a page's links. */
@@ -59,8 +67,8 @@ function rewriteRepositoryLinks(md: any): void {
       token.attrSet('href', `/${matched?.[2] ?? ''}`)
       return render(tokens, index, options, env, self)
     }
-    if (resolved === 'docs/README.md') {
-      token.attrSet('href', `/docs/${matched?.[2] ?? ''}`)
+    if (resolved.endsWith('/README.md') && sitePages.has(resolved)) {
+      token.attrSet('href', `/${resolved.slice(0, -'README.md'.length)}${matched?.[2] ?? ''}`)
       return render(tokens, index, options, env, self)
     }
     if (resolved === 'agentsuite/spec.md' && !localAgentSuite) {
@@ -99,6 +107,7 @@ const reference = [
 
 const maintainers = [
   { text: 'Development', link: '/docs/development' },
+  { text: 'Guidance for Azure', link: '/docs/azure/' },
   { text: 'Documentation site', link: '/docs/docs-site' },
   { text: 'Codebase overview', link: '/docs/codebase-overview' },
   { text: 'Interface baseline', link: '/docs/interface-baseline' },
@@ -136,7 +145,9 @@ export default defineConfig({
   base: process.env.KMX_DOCS_BASE || '/',
   rewrites: {
     'README.md': 'index.md',
-    'docs/README.md': 'docs/index.md'
+    ...Object.fromEntries([...sitePages]
+      .filter((page) => page.endsWith('/README.md'))
+      .map((page) => [page, `${page.slice(0, -'README.md'.length)}index.md`]))
   },
   srcExclude: [
     'AGENTS.md',

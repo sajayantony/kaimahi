@@ -31,7 +31,8 @@ output, not source.
 The sources remain where contributors already review them:
 
 - the root [README](../README.md) remains the repository and site front door;
-- the maintained guides remain under `docs/`;
+- the maintained guides remain under `docs/`, including provider directories
+  such as `docs/azure/`; their `README.md` pages render as directory indexes;
 - the normative [AgentSuite specification](../agentsuite/spec.md) remains under
   `agentsuite/`;
 - source-code, fixture, and checkout-script links lead to the matching GitHub

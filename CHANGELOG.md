@@ -41,6 +41,13 @@ to do. Sections: **Added**, **Changed**, **Fixed**, **Breaking**, **Upgrading**.
 
 ### Added
 
+- Agent-followable [Guidance for Azure](docs/azure/README.md) covers a small
+  CPU-capable dev cluster, explicit infrastructure consent/ownership, optional
+  inference tests, full workspace evaluation and remote digest Lift. The docs
+  site renders nested provider guides without copying Markdown or changing
+  existing Azure page URLs. This is guidance, not live Azure qualification or
+  a new provisioning command.
+
 - A draft docs-as-code website renders the existing README, maintained guides,
   and AgentSuite specification directly with responsive navigation, local search,
   dark mode, a keyboard-accessible journey chooser and an explicit `main` versus

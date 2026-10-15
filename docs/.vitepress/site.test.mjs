@@ -24,9 +24,19 @@ async function htmlFiles(directory, prefix = '') {
 }
 
 test('every maintained Markdown page is rendered exactly once', async () => {
-  const docs = (await readdir(path.join(root, 'docs'), { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => entry.name === 'README.md' ? 'docs/index.html' : `docs/${entry.name.replace(/\.md$/, '.html')}`)
+  async function markdownFiles(directory, prefix = 'docs') {
+    const files = []
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = path.posix.join(prefix, entry.name)
+      if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+        files.push(...await markdownFiles(path.join(directory, entry.name), relative))
+      }
+      if (entry.isFile() && entry.name.endsWith('.md')) files.push(relative)
+    }
+    return files
+  }
+  const docs = (await markdownFiles(path.join(root, 'docs')))
+    .map((file) => file.replace(/\/README\.md$/, '/index.md').replace(/\.md$/, '.html'))
   const expected = ['404.html', 'index.html', ...(withAgentSuite ? ['agentsuite/spec.html'] : []), ...docs].sort()
   assert.deepEqual(await htmlFiles(dist), expected)
 })
@@ -50,6 +60,12 @@ test('checkout-only references point to source while guide links stay local', as
   assert.ok(development.includes(`https://github.com/kaimahi-agents/kaimahi/blob/${sourceRef}/CONTRIBUTING.md`))
   assert.match(development, /href="\.\/getting-started"/)
   assert.doesNotMatch(development, /href="\.\.\/scripts\//)
+  assert.match(development, /href="[^"]*\/docs\/azure\/"/)
+
+  const azure = await readFile(path.join(dist, 'docs', 'azure', 'index.html'), 'utf8')
+  assert.match(azure, /Guidance for Azure/)
+  assert.match(azure, /href="\.\.\/suite-workspace#digest-lift"/)
+  assert.ok(azure.includes(`https://github.com/kaimahi-agents/kaimahi/blob/${sourceRef}/scripts/ci/native-suite-model.yaml`))
 
   const releases = await readFile(path.join(dist, 'docs', 'releases.html'), 'utf8')
   assert.ok(releases.includes(`https://github.com/kaimahi-agents/kaimahi/tree/${sourceRef}/internal/kmx/toolchain`))

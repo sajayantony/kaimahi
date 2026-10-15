@@ -4,6 +4,10 @@ For work **on** Kaimahi; contribution/PR expectations are in
 [CONTRIBUTING.md](../CONTRIBUTING.md). For use, start with
 [getting started](getting-started.md) and [Orka](orka.md).
 
+For a small remote dev cluster and optional CPU inference tests, follow
+[Guidance for Azure](azure/README.md). Its agent runbook separates approved
+infrastructure creation, runtime/model setup, full evaluation and digest Lift.
+
 New contributors should read the [codebase overview](codebase-overview.md) for
 package boundaries and data flows, then the [interface baseline](interface-baseline.md)
 before changing commands or public contracts. The [repository map](repository-map.md)

@@ -39,6 +39,7 @@ See [format boundaries](bundle-format.md) and [current CLI contracts](kmx.md).
 ## Maintainer references
 
 - [Development](development.md): source boundaries, verification and operational traps.
+- [Guidance for Azure](azure/README.md): agent-followable small AKS setup, optional CPU inference tests, evaluation and remote digest Lift.
 - [Documentation site](docs-site.md): one-command local preview, source-of-truth, versioning and publication boundaries.
 - [Codebase overview](codebase-overview.md): architecture, package responsibilities, core data flows and safety invariants.
 - [Interface baseline](interface-baseline.md): exact current command tree, workspace/live split, runtime limits and alpha Go surfaces.

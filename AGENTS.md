@@ -265,7 +265,8 @@ no journal, lease, startup cleanup or publication blockade is implemented.
 
 ## Verification
 
-The browser documentation preview renders the root README and `docs/*.md`
+The browser documentation preview renders the root README and maintained Markdown
+under `docs/`, including provider subdirectories such as `docs/azure/`,
 directly, plus `agentsuite/spec.md` while it remains local. Keep Markdown
 authoritative: navigation and theme code may link to maintained content but must
 not copy it. Keep VitePress output,

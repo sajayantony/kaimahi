@@ -1,5 +1,10 @@
 # Running on a managed cluster (AKS)
 
+For a minimal dev cluster with optional CPU inference testing and evaluated
+digest Lift, use the agent runbook in [Guidance for Azure](azure/README.md).
+The compatibility provisioning path below has different defaults and ownership
+records; do not mix their teardown procedures.
+
 [Orka](orka.md) is the platform; Kaimahi helps developers get agents onto it.
 Agents reach models through owner-configured Orka Providers directly.
 This page documents the **current AKS implementation**, which lands Orka on a
