@@ -161,7 +161,7 @@ to do. Sections: **Added**, **Changed**, **Fixed**, **Breaking**, **Upgrading**.
 
 ### Breaking
 
-- AgentSessions `kmx eval --development-host FILE` requires `--bindings FILE`
+- AgentSessions `kmx test --development-host FILE` requires `--bindings FILE`
   and records the binding digest in its evidence, including judged and repeated
   proof. AgentSessions passing receipts move to v2
   (`kmx.agentsessions-suite.passing/v2`); v1 receipts and managed v1 proof are
